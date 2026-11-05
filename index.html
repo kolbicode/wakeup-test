@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Wake-Up Reaction Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a single game column — progress bar, one card per stage, the pad as the arena. */
+:root {
+  --bg: #E9EEF5;
+  --surface: #FFFFFF;
+  --sunk: #F2F5F9;
+  --line: #D3DBE5;
+  --fg: #14202E;
+  --muted: #5A6878;
+  --accent: #3B5BDB;
+  --accent-2: #F59F00;
+  --accent-fg: #FFFFFF;
+  --wait: #D62F2F;
+  --go: #1F9D55;
+  --pad-idle: #1A2433;
+  --pad-fg: #FFFFFF;
+  --warn: #C92A2A;
+  --ok: #2B8A3E;
+  --shadow: 0 4px 0 #C5CFDB;
+  --font-display: "Fredoka", "Trebuchet MS", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1420; --surface: #172131; --sunk: #111A27; --line: #2A3850; --fg: #EAF0F7; --muted: #9DAEC2;
+    --accent: #8EA6FF; --accent-2: #FFC24B; --accent-fg: #0B1426; --wait: #C73535; --go: #23A35E;
+    --pad-idle: #0A0F18; --pad-fg: #FFFFFF; --warn: #FF8787; --ok: #69DB7C; --shadow: 0 4px 0 #0A1019; color-scheme: dark;
+  }
+}
+:root.morning:not([data-theme="light"]), :root[data-theme="dark"] {
+  --bg: #0D1420; --surface: #172131; --sunk: #111A27; --line: #2A3850; --fg: #EAF0F7; --muted: #9DAEC2;
+  --accent: #8EA6FF; --accent-2: #FFC24B; --accent-fg: #0B1426; --wait: #C73535; --go: #23A35E;
+  --pad-idle: #0A0F18; --pad-fg: #FFFFFF; --warn: #FF8787; --ok: #69DB7C; --shadow: 0 4px 0 #0A1019; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 17px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 48px;
+}
+.wrap { max-width: 620px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; width: 100%; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.15; text-wrap: balance; font-weight: 600; }
+h1 { font-size: 28px; }
+h2 { font-size: 21px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--go); display: grid; place-items: center; box-shadow: var(--shadow); flex: none; }
+.brand .logo svg { width: 24px; height: 24px; }
+.brand b { font-family: var(--font-display); font-size: 21px; font-weight: 700; display: block; line-height: 1.1; }
+.brand span { color: var(--muted); font-size: 13px; }
+.top-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.seg { display: flex; background: var(--sunk); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+.seg button { font: 600 13px/1 var(--font-display); letter-spacing: 0.04em; padding: 7px 10px; border: none; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"], .seg button[aria-current="true"] { background: var(--fg); color: var(--bg); }
+
+.progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.progress i { height: 8px; border-radius: 99px; background: var(--line); transition: background .3s; }
+.progress i.done { background: var(--go); }
+.progress i.on { background: var(--accent); }
+.progress-label { display: flex; justify-content: space-between; font: 600 13px var(--font-display); color: var(--muted); letter-spacing: 0.03em; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: var(--shadow); }
+.hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.hud div { background: var(--sunk); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hud b { font: 700 24px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.hud span { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 700; min-width: 0; }
+.field small { font-weight: 400; color: var(--muted); }
+input, select {
+  font: inherit; font-weight: 400; color: var(--fg); background: var(--sunk); border: 1px solid var(--line);
+  border-radius: 12px; padding: 11px 12px; width: 100%; min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible, .pad:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.idbox { font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.btn { font: 600 18px/1 var(--font-display); letter-spacing: 0.01em; border: none; border-radius: 14px; padding: 15px 22px; cursor: pointer; background: var(--accent); color: var(--accent-fg); box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 60%, #000); transition: transform .08s, box-shadow .08s; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
+.btn.go { background: var(--go); color: #FFFFFF; box-shadow: 0 4px 0 color-mix(in srgb, var(--go) 60%, #000); }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); box-shadow: none; font-weight: 500; }
+.btn.small { font-size: 15px; padding: 9px 14px; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row.end { justify-content: flex-end; }
+.btn.wide { width: 100%; }
+.err { color: var(--warn); font-size: 14px; }
+.note { font-size: 14px; color: var(--muted); background: var(--sunk); border-radius: 12px; padding: 10px 12px; }
+
+/* time picker wheels */
+.tp { display: flex; align-items: center; gap: 6px; }
+.tp select { width: auto; flex: 1; font: 600 22px var(--font-display); text-align: center; text-align-last: center; padding: 10px 6px; font-variant-numeric: tabular-nums; }
+.tp .colon { font: 700 24px var(--font-display); }
+.tp .unit { font-size: 13px; color: var(--muted); font-weight: 400; }
+
+/* arena */
+.pad {
+  position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  background: var(--pad-idle); color: var(--pad-fg); border-radius: 22px; min-height: 360px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px 18px; cursor: pointer;
+  transition: background-color .06s linear;
+}
+.pad .big { font: 700 68px/1 var(--font-display); letter-spacing: 0.02em; font-variant-numeric: tabular-nums; position: relative; z-index: 1; }
+.pad .msg { font-size: 17px; position: relative; z-index: 1; max-width: 34ch; }
+.pad .fact { font-size: 15px; opacity: 0.85; position: relative; z-index: 1; max-width: 36ch; min-height: 1.5em; }
+.pad .ring { position: absolute; width: 180px; height: 180px; border-radius: 50%; border: 3px solid currentColor; opacity: 0; }
+.pad.idle .ring { animation: ring 2.2s ease-out infinite; }
+.pad.wait { background: var(--wait); }
+.pad.go { background: var(--go); }
+.pad.go .big { animation: pop .18s ease-out; }
+.pad.feedback .big { animation: pop .25s ease-out; }
+.pad.early { background: var(--pad-idle); }
+.pad.early .big { color: var(--warn); font-size: 44px; animation: shake .35s; }
+.pad .count { position: absolute; top: 14px; left: 16px; font: 600 14px var(--font-display); opacity: 0.8; z-index: 1; }
+.pad .best { position: absolute; top: 14px; right: 16px; font: 600 14px var(--font-display); opacity: 0.8; z-index: 1; }
+.dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; background: currentColor; opacity: 0.25; }
+.dots i.d { opacity: 1; background: var(--accent-2); animation: pop .3s ease-out; }
+.dots i.x { opacity: 1; background: var(--warn); }
+@keyframes ring { 0% { transform: scale(.6); opacity: .5; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes pop { 0% { transform: scale(.7); } 70% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+@keyframes rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* rank card */
+.rank { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; background: var(--sunk); border: 2px solid var(--accent-2); border-radius: 18px; padding: 16px; animation: rise .4s ease-out; }
+.rank .emoji { font-size: 56px; line-height: 1; }
+.rank .kicker { font: 600 12px var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.rank h2 { font-size: 26px; }
+.rank p { color: var(--muted); font-size: 15px; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font: 600 14px var(--font-display); background: var(--accent-2); color: #1A1200; border-radius: 999px; padding: 4px 10px; width: fit-content; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+@media (max-width: 480px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stats div { background: var(--sunk); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stats dt { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.stats dd { margin: 0; font: 600 20px var(--font-display); font-variant-numeric: tabular-nums; }
+.stats dd small { font-size: 13px; color: var(--muted); font-weight: 400; }
+
+/* chart */
+.chart { width: 100%; overflow-x: auto; }
+.chart svg { display: block; width: 100%; height: auto; min-width: 300px; }
+.ch-bar { fill: var(--accent); }
+.ch-bar.lapse { fill: var(--warn); }
+.ch-zone { fill: var(--warn); opacity: 0.09; }
+.ch-grid { stroke: var(--line); stroke-width: 1; }
+.ch-med { stroke: var(--accent-2); stroke-width: 2.5; stroke-dasharray: 6 5; }
+.ch-txt { fill: var(--muted); font: 12px var(--font-body); }
+.ch-val { fill: var(--fg); font: 600 12px var(--font-display); }
+.ch-medtxt { fill: var(--fg); font: 600 12px var(--font-display); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.slider { display: flex; align-items: center; gap: 12px; }
+.slider input[type="range"] { flex: 1; padding: 0; border: none; background: transparent; accent-color: var(--accent); height: 34px; }
+.slider output { font: 700 26px var(--font-display); min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.slider.unset output { color: var(--muted); }
+.slider.unset input[type="range"] { opacity: 0.55; }
+
+.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
+.thumbs figure { margin: 0; position: relative; }
+.thumbs img { width: 84px; height: 140px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.thumbs button { position: absolute; top: 4px; right: 4px; border: none; border-radius: 999px; width: 26px; height: 26px; background: var(--fg); color: var(--bg); cursor: pointer; font-size: 15px; line-height: 1; }
+.drop { border: 2px dashed var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+
+.pad .stopbtn { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 2; font: 600 14px var(--font-display); color: inherit; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.pad .count { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px)); }
+@media (max-width: 760px), (pointer: coarse) {
+  .pad.full { position: fixed; inset: 0; z-index: 30; border-radius: 0; min-height: 0; }
+}
+.pad.count-down .big { font-size: 110px; animation: pop .35s ease-out; }
+.check { display: flex; gap: 12px; align-items: flex-start; background: var(--sunk); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer; }
+.check input { width: 24px; height: 24px; flex: none; margin: 2px 0 0; accent-color: var(--wait); padding: 0; }
+.check b { display: block; font-size: 16px; }
+.check span { font-size: 14px; color: var(--muted); }
+.check:has(input:checked) { border-color: var(--wait); }
+.warnbox { border: 2px solid var(--accent-2); background: var(--sunk); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.warnbox ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 15px; }
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+.confetti i { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; animation: fall 1.6s ease-in forwards; }
+@keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: 0.6; } }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); background: var(--sunk); }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+td a { color: var(--accent); }
+.empty { padding: 24px; text-align: center; color: var(--muted); }
+.statusline { font-size: 14px; }
+.statusline.ok { color: var(--ok); }
+.statusline.bad { color: var(--warn); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .confetti { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div>
+      <div><b>Wake-Up Reaction Test</b><span data-t="brandSub"></span></div>
+    </div>
+    <div class="top-right">
+      <div class="seg" id="langs" role="group" aria-label="Language"></div>
+    </div>
+  </header>
+
+  <div id="view-test" class="wrap">
+    <div>
+      <div class="progress" aria-hidden="true"><i id="pg1"></i><i id="pg2"></i><i id="pg3"></i><i id="pg4"></i></div>
+      <div class="progress-label" style="margin-top:6px"><span id="pg-label"></span><span id="pg-num"></span></div>
+    </div>
+
+    <!-- STEP 1 -->
+    <section class="card" id="s1">
+      <h1 data-t="s1Title"></h1>
+      <p class="muted" data-t="s1Intro"></p>
+      <div class="grid2">
+        <label class="field" for="p-id"><span data-t="idLabel"></span><small data-t="idHelp"></small><input id="p-id" class="idbox" maxlength="12" autocomplete="off" spellcheck="false"></label>
+        <label class="field" for="p-age"><span data-t="ageLabel"></span><small data-t="ageHelp"></small><input id="p-age" type="number" inputmode="numeric" min="16" max="99"></label>
+        <label class="field" for="p-trials"><span data-t="trialsLabel"></span><small data-t="trialsHelp"></small>
+          <select id="p-trials"><option value="5">5 (≈ 30 s)</option><option value="10" selected>10 (≈ 1 min)</option><option value="15">15 (≈ 1.5 min)</option><option value="20">20 (≈ 2 min)</option></select>
+        </label>
+      </div>
+      <p class="err" id="s1-err" hidden></p>
+      <button class="btn go wide" type="button" id="to-test" data-t="startTest"></button>
+    </section>
+
+    <!-- STEP 2 -->
+    <section class="card" id="s2" hidden>
+      <div id="test-intro" class="wrap" style="gap:8px">
+        <h1 data-t="s2Title"></h1>
+        <p class="muted" data-t-html="s2Intro"></p>
+      </div>
+      <div class="pad idle" id="pad" role="button" tabindex="0" aria-live="polite">
+        <span class="ring" aria-hidden="true"></span>
+        <span class="count" id="pad-count"></span>
+        <button class="stopbtn" type="button" id="pad-stop" data-t="stop" hidden></button>
+        <span class="big" id="pad-big">READY?</span>
+        <span class="msg" id="pad-msg"></span>
+        <span class="dots" id="pad-dots"></span>
+      </div>
+      <div id="test-result" hidden class="wrap" style="gap:16px">
+        <div class="row" style="justify-content:space-between">
+          <h2 data-t="resultsTitle"></h2>
+          <span class="badge" id="pb-badge" hidden></span>
+        </div>
+        <div class="chart" id="chart"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i><span data-t="lgReaction"></span></span><span><i style="background:var(--accent-2);height:3px"></i><span data-t="lgMedian"></span></span><span><i style="background:var(--warn);opacity:.35"></i><span data-t="lgLapse"></span></span></div>
+        <dl class="stats" id="stats"></dl>
+        <label class="check" for="disturbed">
+          <input type="checkbox" id="disturbed">
+          <div><b data-t="disturbedLabel"></b><span data-t="disturbedHelp"></span></div>
+        </label>
+        <div class="row end">
+          <button class="btn ghost" type="button" id="redo" data-t="redo"></button>
+          <button class="btn" type="button" id="to-after" data-t="cont"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3 -->
+    <section class="card" id="s3" hidden>
+      <h1 data-t="s3Title"></h1>
+      <p class="note" data-t="s3Note"></p>
+      <div class="field">
+        <label for="sl-score" data-t="scoreLabel"></label><small data-t="scoreHelp"></small>
+        <div class="slider unset" id="score-wrap"><input id="sl-score" type="range" min="0" max="100" step="1" value="50"><output id="score-out" for="sl-score">–</output></div>
+        <div class="row"><button class="btn ghost small" type="button" id="score-clear" data-t="noScore" hidden></button></div>
+      </div>
+      <div class="grid2">
+        <div class="field" role="group" aria-labelledby="lbl-bed"><span id="lbl-bed" data-t="bedLabel"></span><div class="tp" id="tp-bed"></div></div>
+        <div class="field" role="group" aria-labelledby="lbl-wake"><span id="lbl-wake"><span data-t="wakeLabel"></span> <small data-t="required"></small></span><div class="tp" id="tp-wake"></div></div>
+        <div class="field" role="group" aria-labelledby="lbl-total"><span id="lbl-total" data-t="totalLabel"></span><div class="tp" id="tp-total"></div></div>
+        <label class="field" for="sl-awake"><span data-t="awakeLabel"></span><input id="sl-awake" type="number" inputmode="numeric" min="0" max="50"></label>
+      </div>
+      <div class="wrap" style="gap:10px">
+        <h2><span data-t="stagesTitle"></span> <small class="muted small" style="font-family:var(--font-body);font-weight:400" data-t="stagesHelp"></small></h2>
+        <div class="grid2">
+          <div class="field" role="group" aria-labelledby="lbl-deep"><span id="lbl-deep" data-t="deepLabel"></span><div class="tp" id="tp-deep"></div></div>
+          <div class="field" role="group" aria-labelledby="lbl-rem"><span id="lbl-rem" data-t="remLabel"></span><div class="tp" id="tp-rem"></div></div>
+          <div class="field" role="group" aria-labelledby="lbl-light"><span id="lbl-light" data-t="lightLabel"></span><div class="tp" id="tp-light"></div></div>
+        </div>
+      </div>
+      <div class="drop" id="shot-box">
+        <b data-t="shotsTitle"></b>
+        <span class="small muted" data-t="shotsHelp"></span>
+        <input id="shot-input" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+        <div class="thumbs" id="thumbs"></div>
+      </div>
+      <p class="note" id="shot-off" data-t="shotsOff" hidden></p>
+      <div class="warnbox" id="warnbox" hidden role="alert">
+        <b data-t="warnTitle"></b>
+        <ul id="warnlist"></ul>
+        <div class="row end">
+          <button class="btn ghost small" type="button" id="warn-fix" data-t="fixBtn"></button>
+          <button class="btn small" type="button" id="warn-save" data-t="saveAnyway"></button>
+        </div>
+      </div>
+      <p class="err" id="s3-err" hidden></p>
+      <button class="btn go wide" type="button" id="submit" data-t="save"></button>
+    </section>
+
+    <!-- STEP 4 -->
+    <section class="card" id="s4" hidden>
+      <h1 id="done-title"></h1>
+      <p class="muted" id="done-text"></p>
+      <div id="hist-wrap" class="wrap" style="gap:10px" hidden>
+        <h2 data-t="histTitle"></h2>
+        <div class="chart" id="hist-chart"></div>
+      </div>
+      <div class="row" id="fallback" hidden>
+        <button class="btn" type="button" id="dl-json" data-t="download"></button>
+        <button class="btn ghost" type="button" id="copy-json" data-t="copy"></button>
+      </div>
+      <p class="statusline" id="fallback-status"></p>
+      <div class="row end"><button class="btn ghost" type="button" id="again" data-t="newEntry"></button></div>
+    </section>
+  </div>
+
+</div>
+
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+<script>
+(() => {
+  // "READY?", "WAIT" and "TAP" stay English on purpose.
+  // Nature rates used for comparisons: hummingbird ~50 wingbeats/s, honeybee ~230 wingbeats/s,
+  // cheetah sprint ~29 m/s, speed of sound 343 m/s in air at 20 °C.
+  const I18N = {
+    en: { _name: "English",
+      brandSub: "Sleep & cognition study", step1: "Check in", step2: "Reaction test", step3: "Sleep data", step4: "Done",
+      s1Title: "Good morning! Ready for today's round?", hudStreak: "day streak", hudBest: "best median", hudTotal: "mornings",
+      s1Intro: "Play within 30 minutes of waking up, before coffee, always on the same device. It's anonymous: you play under a random ID.",
+      idLabel: "Your player ID", idHelp: "Remembered on this device. On a new device, type your ID in here.",
+      ageLabel: "Age", ageHelp: "In years", agePh: "e.g. 24", trialsLabel: "Rounds", trialsHelp: "10 is recommended",
+      errId: "Your ID is missing. Type the ID you used before, or reload the page to get a new one.", errAge: "Enter your age as a number between 16 and 99.",
+      startTest: "Let's go", s2Title: "Reaction test",
+      s2Intro: "<b>Red</b> means wait. The moment it turns <b>green</b>, tap (or press <b>Space</b>) as fast as you can.",
+      padBegin: "Tap to start", padWaitMsg: "Wait for green…", tooEarly: "Too early!", tooEarlyMsg: "Wait for green. This round repeats.",
+      guessMsg: "That was a guess, not a reaction. This round repeats.", missed: "Missed", round: "Round", bestToday: "Best",
+      resultsTitle: "Your results", rankKicker: "Today's rank", chartTitle: "Every reaction", lgReaction: "Reaction", lgMedian: "Median", lgLapse: "Lapse zone (> 500 ms)",
+      newPb: "New personal best!", pbWas: "Personal best: {m} ms",
+      stMedian: "Median", stMean: "Mean", stFastest: "Fastest", stSlowest: "Slowest", stSd: "Std dev", stSpeed: "Speed", stLapses: "Lapses", stFalse: "False starts", stSlow10: "Slowest 10 %",
+      redo: "Play again", cont: "Continue",
+      s3Title: "Sleep data", s3Note: "Fill in what your sleep app shows. A screenshot of the sleep summary is enough on its own; we read the numbers later.",
+      scoreLabel: "Sleep score", scoreHelp: "Slide to the score your app shows (0–100). Leave it untouched if your app has no score.", noScore: "No score",
+      bedLabel: "Fell asleep / went to bed", wakeLabel: "Woke up", required: "(required)", totalLabel: "Total sleep", awakeLabel: "Times awake",
+      hh: "h", mm: "min",
+      shotsTitle: "Screenshot of the sleep summary", shotsHelp: "PNG or JPG, up to 4 images.",
+      shotsOff: "Screenshot upload isn't available on your view of this page. Send the screenshot to the study team instead and name it with your ID and today's date.",
+      removeShot: "Remove screenshot", errWake: "Set the time you woke up (hours and minutes).",
+      errType: "“{name}” isn't a PNG, JPG or WebP image.", errSize: "“{name}” is larger than 20 MB.",
+      save: "Save today's round", saving: "Saving…", savedTitle: "Saved. See you tomorrow!", savedText: "Today's round is in: {n} reactions, median {m} ms.",
+      nextHint: "Come back tomorrow morning to keep your streak going.",
+      notSavedTitle: "Not saved online", notSavedText: "The page couldn't reach the study database. Download your entry or copy it and send it to the study team, so today isn't lost.",
+      uploadFail: " One or more screenshots could not be uploaded; please send them to the study team.",
+      download: "Download my entry", copy: "Copy entry as text", downloaded: "Downloaded.", dlFail: "The download was cancelled or isn't available. Copy the entry instead.",
+      copied: "Copied. Paste it into a message to the study team.", copyFail: "Copying isn't allowed here. Download the entry instead.", newEntry: "New entry" },
+    de: { _name: "Deutsch",
+      brandSub: "Studie zu Schlaf & Kognition", step1: "Check-in", step2: "Reaktionstest", step3: "Schlafdaten", step4: "Fertig",
+      s1Title: "Guten Morgen! Bereit für die heutige Runde?", hudStreak: "Tage in Folge", hudBest: "bester Median", hudTotal: "Morgen",
+      s1Intro: "Spiel innerhalb von 30 Minuten nach dem Aufwachen, vor dem Kaffee und immer auf demselben Gerät. Alles anonym: Du spielst unter einer zufälligen ID.",
+      idLabel: "Deine Spieler-ID", idHelp: "Wird auf diesem Gerät gespeichert. Auf einem neuen Gerät gib hier deine ID ein.",
+      ageLabel: "Alter", ageHelp: "In Jahren", agePh: "z. B. 24", trialsLabel: "Runden", trialsHelp: "Empfohlen: 10",
+      errId: "Deine ID fehlt. Gib die ID ein, die du vorher benutzt hast, oder lade die Seite neu, um eine neue zu bekommen.", errAge: "Gib dein Alter als Zahl zwischen 16 und 99 ein.",
+      startTest: "Los geht's", s2Title: "Reaktionstest",
+      s2Intro: "<b>Rot</b> heißt warten. Sobald es <b>grün</b> wird, tippe so schnell wie möglich (oder drücke die <b>Leertaste</b>).",
+      padBegin: "Zum Starten tippen", padWaitMsg: "Warte auf Grün …", tooEarly: "Zu früh!", tooEarlyMsg: "Warte auf Grün. Die Runde wird wiederholt.",
+      guessMsg: "Das war geraten, keine Reaktion. Die Runde wird wiederholt.", missed: "Verpasst", round: "Runde", bestToday: "Beste",
+      resultsTitle: "Deine Ergebnisse", rankKicker: "Dein Rang heute", chartTitle: "Jede Reaktion", lgReaction: "Reaktion", lgMedian: "Median", lgLapse: "Aussetzer-Zone (> 500 ms)",
+      newPb: "Neue persönliche Bestleistung!", pbWas: "Bestleistung: {m} ms",
+      stMedian: "Median", stMean: "Mittelwert", stFastest: "Schnellste", stSlowest: "Langsamste", stSd: "Standardabw.", stSpeed: "Tempo", stLapses: "Aussetzer", stFalse: "Fehlstarts", stSlow10: "Langsamste 10 %",
+      redo: "Nochmal spielen", cont: "Weiter",
+      s3Title: "Schlafdaten", s3Note: "Trag ein, was deine Schlaf-App anzeigt. Ein Screenshot der Schlafübersicht reicht auch allein; die Werte lesen wir später aus.",
+      scoreLabel: "Schlafscore", scoreHelp: "Stell den Score ein, den deine App anzeigt (0–100). Lass den Regler unberührt, wenn deine App keinen Score hat.", noScore: "Kein Score",
+      bedLabel: "Eingeschlafen / ins Bett", wakeLabel: "Aufgewacht", required: "(Pflicht)", totalLabel: "Schlafdauer gesamt", awakeLabel: "Wie oft wach",
+      hh: "Std.", mm: "Min.",
+      shotsTitle: "Screenshot der Schlafübersicht", shotsHelp: "PNG oder JPG, bis zu 4 Bilder.",
+      shotsOff: "In deiner Ansicht dieser Seite kannst du keine Screenshots hochladen. Schick den Screenshot stattdessen ans Studienteam und benenne ihn mit deiner ID und dem heutigen Datum.",
+      removeShot: "Screenshot entfernen", errWake: "Stell ein, wann du aufgewacht bist (Stunden und Minuten).",
+      errType: "„{name}“ ist kein PNG-, JPG- oder WebP-Bild.", errSize: "„{name}“ ist größer als 20 MB.",
+      save: "Heutige Runde speichern", saving: "Wird gespeichert …", savedTitle: "Gespeichert. Bis morgen!", savedText: "Die heutige Runde ist drin: {n} Reaktionen, Median {m} ms.",
+      nextHint: "Komm morgen früh wieder, damit deine Serie weiterläuft.",
+      notSavedTitle: "Nicht online gespeichert", notSavedText: "Die Seite konnte die Studiendatenbank nicht erreichen. Lade deinen Eintrag herunter oder kopiere ihn und schick ihn ans Studienteam, damit der Tag nicht verloren geht.",
+      uploadFail: " Mindestens ein Screenshot konnte nicht hochgeladen werden; bitte schick ihn ans Studienteam.",
+      download: "Eintrag herunterladen", copy: "Eintrag als Text kopieren", downloaded: "Heruntergeladen.", dlFail: "Der Download wurde abgebrochen oder ist nicht verfügbar. Kopiere den Eintrag stattdessen.",
+      copied: "Kopiert. Füge ihn in eine Nachricht ans Studienteam ein.", copyFail: "Kopieren ist hier nicht erlaubt. Lade den Eintrag stattdessen herunter.", newEntry: "Neuer Eintrag" },
+    nl: { _name: "Nederlands (Vlaams)",
+      brandSub: "Studie over slaap & cognitie", step1: "Check-in", step2: "Reactietest", step3: "Slaapgegevens", step4: "Klaar",
+      s1Title: "Goeiemorgen! Klaar voor de ronde van vandaag?", hudStreak: "dagen op rij", hudBest: "beste mediaan", hudTotal: "ochtenden",
+      s1Intro: "Speel binnen 30 minuten na het ontwaken, vóór je koffie, altijd op hetzelfde toestel. Alles is anoniem: je speelt met een willekeurige ID.",
+      idLabel: "Jouw speler-ID", idHelp: "Wordt op dit toestel onthouden. Op een nieuw toestel typ je hier je ID in.",
+      ageLabel: "Leeftijd", ageHelp: "In jaren", agePh: "bv. 24", trialsLabel: "Rondes", trialsHelp: "10 is aanbevolen",
+      errId: "Je ID ontbreekt. Typ de ID die je eerder gebruikte, of herlaad de pagina voor een nieuwe.", errAge: "Vul je leeftijd in als getal tussen 16 en 99.",
+      startTest: "Aan de slag", s2Title: "Reactietest",
+      s2Intro: "<b>Rood</b> betekent wachten. Zodra het <b>groen</b> wordt, tik je zo snel mogelijk (of druk je op de <b>spatiebalk</b>).",
+      padBegin: "Tik om te starten", padWaitMsg: "Wacht op groen…", tooEarly: "Te vroeg!", tooEarlyMsg: "Wacht op groen. Deze ronde wordt herhaald.",
+      guessMsg: "Dat was gokken, geen reactie. Deze ronde wordt herhaald.", missed: "Gemist", round: "Ronde", bestToday: "Beste",
+      resultsTitle: "Jouw resultaten", rankKicker: "Jouw rang vandaag", chartTitle: "Elke reactie", lgReaction: "Reactie", lgMedian: "Mediaan", lgLapse: "Misser-zone (> 500 ms)",
+      newPb: "Nieuw persoonlijk record!", pbWas: "Persoonlijk record: {m} ms",
+      stMedian: "Mediaan", stMean: "Gemiddelde", stFastest: "Snelste", stSlowest: "Traagste", stSd: "Standaardafw.", stSpeed: "Snelheid", stLapses: "Missers", stFalse: "Valse starts", stSlow10: "Traagste 10 %",
+      redo: "Opnieuw spelen", cont: "Verder",
+      s3Title: "Slaapgegevens", s3Note: "Vul in wat je slaap-app toont. Een screenshot van het slaapoverzicht volstaat ook; de cijfers lezen we later zelf af.",
+      scoreLabel: "Slaapscore", scoreHelp: "Schuif naar de score die je app toont (0–100). Laat de schuifregelaar staan als je app geen score heeft.", noScore: "Geen score",
+      bedLabel: "In slaap gevallen / naar bed", wakeLabel: "Wakker geworden", required: "(verplicht)", totalLabel: "Totale slaap", awakeLabel: "Aantal keer wakker",
+      hh: "u", mm: "min",
+      shotsTitle: "Screenshot van het slaapoverzicht", shotsHelp: "PNG of JPG, tot 4 afbeeldingen.",
+      shotsOff: "Screenshots uploaden kan niet in jouw weergave van deze pagina. Stuur de screenshot naar het studieteam, met je ID en de datum van vandaag in de naam.",
+      removeShot: "Screenshot verwijderen", errWake: "Stel in hoe laat je wakker werd (uren en minuten).",
+      errType: "‘{name}’ is geen PNG-, JPG- of WebP-afbeelding.", errSize: "‘{name}’ is groter dan 20 MB.",
+      save: "Bewaar de ronde van vandaag", saving: "Bezig met bewaren…", savedTitle: "Bewaard. Tot morgen!", savedText: "De ronde van vandaag zit erin: {n} reacties, mediaan {m} ms.",
+      nextHint: "Kom morgenochtend terug om je reeks vol te houden.",
+      notSavedTitle: "Niet online bewaard", notSavedText: "De pagina kon de studiedatabank niet bereiken. Download je gegevens of kopieer ze en stuur ze naar het studieteam, zodat deze dag niet verloren gaat.",
+      uploadFail: " Een of meer screenshots konden niet geüpload worden; stuur ze naar het studieteam.",
+      download: "Download mijn gegevens", copy: "Kopieer als tekst", downloaded: "Gedownload.", dlFail: "Downloaden is geannuleerd of niet beschikbaar. Kopieer de gegevens in de plaats.",
+      copied: "Gekopieerd. Plak het in een bericht aan het studieteam.", copyFail: "Kopiëren is hier niet toegestaan. Download de gegevens in de plaats.", newEntry: "Nieuwe invoer" },
+    fr: { _name: "Français",
+      brandSub: "Étude sommeil & cognition", step1: "Check-in", step2: "Test de réaction", step3: "Sommeil", step4: "Terminé",
+      s1Title: "Bonjour ! Prêt pour la partie du jour ?", hudStreak: "jours d'affilée", hudBest: "meilleure médiane", hudTotal: "matins",
+      s1Intro: "Joue dans les 30 minutes qui suivent ton réveil, avant le café, toujours sur le même appareil. C'est anonyme : tu joues avec un identifiant aléatoire.",
+      idLabel: "Ton identifiant de joueur", idHelp: "Enregistré sur cet appareil. Sur un nouvel appareil, saisis ton identifiant ici.",
+      ageLabel: "Âge", ageHelp: "En années", agePh: "ex. 24", trialsLabel: "Manches", trialsHelp: "10 recommandé",
+      errId: "Ton identifiant manque. Saisis celui que tu utilisais avant, ou recharge la page pour en obtenir un nouveau.", errAge: "Indique ton âge en chiffres, entre 16 et 99.",
+      startTest: "C'est parti", s2Title: "Test de réaction",
+      s2Intro: "<b>Rouge</b> : attends. Dès que ça devient <b>vert</b>, touche l'écran (ou appuie sur la <b>barre d'espace</b>) le plus vite possible.",
+      padBegin: "Touche pour commencer", padWaitMsg: "Attends le vert…", tooEarly: "Trop tôt !", tooEarlyMsg: "Attends le vert. Cette manche est répétée.",
+      guessMsg: "C'était deviné, pas une réaction. Cette manche est répétée.", missed: "Raté", round: "Manche", bestToday: "Meilleur",
+      resultsTitle: "Tes résultats", rankKicker: "Ton rang du jour", chartTitle: "Chaque réaction", lgReaction: "Réaction", lgMedian: "Médiane", lgLapse: "Zone d'absence (> 500 ms)",
+      newPb: "Nouveau record personnel !", pbWas: "Record personnel : {m} ms",
+      stMedian: "Médiane", stMean: "Moyenne", stFastest: "Plus rapide", stSlowest: "Plus lent", stSd: "Écart-type", stSpeed: "Vitesse", stLapses: "Absences", stFalse: "Faux départs", stSlow10: "10 % plus lents",
+      redo: "Rejouer", cont: "Continuer",
+      s3Title: "Données de sommeil", s3Note: "Indique ce que montre ton appli de sommeil. Une capture d'écran du résumé suffit à elle seule ; nous lirons les valeurs plus tard.",
+      scoreLabel: "Score de sommeil", scoreHelp: "Règle le curseur sur le score de ton appli (0–100). N'y touche pas si ton appli n'a pas de score.", noScore: "Pas de score",
+      bedLabel: "Endormi / couché à", wakeLabel: "Réveillé à", required: "(obligatoire)", totalLabel: "Sommeil total", awakeLabel: "Nombre de réveils",
+      hh: "h", mm: "min",
+      shotsTitle: "Capture d'écran du résumé de sommeil", shotsHelp: "PNG ou JPG, jusqu'à 4 images.",
+      shotsOff: "L'envoi de captures n'est pas disponible dans ta vue de cette page. Envoie plutôt la capture à l'équipe de l'étude, nommée avec ton identifiant et la date du jour.",
+      removeShot: "Supprimer la capture", errWake: "Règle l'heure de ton réveil (heures et minutes).",
+      errType: "« {name} » n'est pas une image PNG, JPG ou WebP.", errSize: "« {name} » dépasse 20 Mo.",
+      save: "Enregistrer la partie du jour", saving: "Enregistrement…", savedTitle: "Enregistré. À demain !", savedText: "La partie du jour est enregistrée : {n} réactions, médiane {m} ms.",
+      nextHint: "Reviens demain matin pour garder ta série.",
+      notSavedTitle: "Pas enregistré en ligne", notSavedText: "La page n'a pas pu joindre la base de données de l'étude. Télécharge ta saisie ou copie-la et envoie-la à l'équipe, pour ne pas perdre cette journée.",
+      uploadFail: " Une ou plusieurs captures n'ont pas pu être envoyées ; envoie-les à l'équipe de l'étude.",
+      download: "Télécharger ma saisie", copy: "Copier en texte", downloaded: "Téléchargé.", dlFail: "Téléchargement annulé ou indisponible. Copie plutôt la saisie.",
+      copied: "Copié. Colle-le dans un message à l'équipe de l'étude.", copyFail: "La copie n'est pas autorisée ici. Télécharge plutôt la saisie.", newEntry: "Nouvelle saisie" },
+    es: { _name: "Español",
+      brandSub: "Estudio de sueño y cognición", step1: "Registro", step2: "Prueba de reacción", step3: "Datos de sueño", step4: "Listo",
+      s1Title: "¡Buenos días! ¿Listo para la ronda de hoy?", hudStreak: "días seguidos", hudBest: "mejor mediana", hudTotal: "mañanas",
+      s1Intro: "Juega en los 30 minutos siguientes a despertarte, antes del café y siempre en el mismo dispositivo. Es anónimo: juegas con un ID aleatorio.",
+      idLabel: "Tu ID de jugador", idHelp: "Se guarda en este dispositivo. En un dispositivo nuevo, escribe aquí tu ID.",
+      ageLabel: "Edad", ageHelp: "En años", agePh: "p. ej. 24", trialsLabel: "Rondas", trialsHelp: "Se recomiendan 10",
+      errId: "Falta tu ID. Escribe el que usaste antes o recarga la página para obtener uno nuevo.", errAge: "Introduce tu edad como un número entre 16 y 99.",
+      startTest: "¡Vamos!", s2Title: "Prueba de reacción",
+      s2Intro: "<b>Rojo</b> significa esperar. En cuanto se ponga <b>verde</b>, toca (o pulsa la <b>barra espaciadora</b>) lo más rápido que puedas.",
+      padBegin: "Toca para empezar", padWaitMsg: "Espera al verde…", tooEarly: "¡Demasiado pronto!", tooEarlyMsg: "Espera al verde. Esta ronda se repite.",
+      guessMsg: "Eso fue adivinar, no reaccionar. Esta ronda se repite.", missed: "Fallada", round: "Ronda", bestToday: "Mejor",
+      resultsTitle: "Tus resultados", rankKicker: "Tu rango de hoy", chartTitle: "Cada reacción", lgReaction: "Reacción", lgMedian: "Mediana", lgLapse: "Zona de lapsus (> 500 ms)",
+      newPb: "¡Nuevo récord personal!", pbWas: "Récord personal: {m} ms",
+      stMedian: "Mediana", stMean: "Media", stFastest: "Más rápida", stSlowest: "Más lenta", stSd: "Desv. estándar", stSpeed: "Velocidad", stLapses: "Lapsus", stFalse: "Salidas en falso", stSlow10: "10 % más lentas",
+      redo: "Jugar otra vez", cont: "Continuar",
+      s3Title: "Datos de sueño", s3Note: "Rellena lo que muestra tu app de sueño. Una captura del resumen de sueño basta por sí sola; leeremos los valores después.",
+      scoreLabel: "Puntuación de sueño", scoreHelp: "Desliza hasta la puntuación que muestra tu app (0–100). No lo toques si tu app no da puntuación.", noScore: "Sin puntuación",
+      bedLabel: "Me dormí / me acosté", wakeLabel: "Me desperté", required: "(obligatorio)", totalLabel: "Sueño total", awakeLabel: "Veces despierto",
+      hh: "h", mm: "min",
+      shotsTitle: "Captura del resumen de sueño", shotsHelp: "PNG o JPG, hasta 4 imágenes.",
+      shotsOff: "En tu vista de esta página no se pueden subir capturas. Envía la captura al equipo del estudio, con tu ID y la fecha de hoy en el nombre.",
+      removeShot: "Quitar captura", errWake: "Ajusta la hora a la que te despertaste (horas y minutos).",
+      errType: "«{name}» no es una imagen PNG, JPG o WebP.", errSize: "«{name}» pesa más de 20 MB.",
+      save: "Guardar la ronda de hoy", saving: "Guardando…", savedTitle: "Guardado. ¡Hasta mañana!", savedText: "La ronda de hoy está guardada: {n} reacciones, mediana {m} ms.",
+      nextHint: "Vuelve mañana por la mañana para mantener tu racha.",
+      notSavedTitle: "No se guardó en línea", notSavedText: "La página no pudo conectar con la base de datos del estudio. Descarga tu registro o cópialo y envíalo al equipo para que no se pierda este día.",
+      uploadFail: " No se pudieron subir una o más capturas; envíalas al equipo del estudio.",
+      download: "Descargar mi registro", copy: "Copiar como texto", downloaded: "Descargado.", dlFail: "La descarga se canceló o no está disponible. Copia el registro en su lugar.",
+      copied: "Copiado. Pégalo en un mensaje al equipo del estudio.", copyFail: "Aquí no se permite copiar. Descarga el registro en su lugar.", newEntry: "Nuevo registro" },
+    ca: { _name: "Català",
+      brandSub: "Estudi de son i cognició", step1: "Registre", step2: "Prova de reacció", step3: "Dades de son", step4: "Fet",
+      s1Title: "Bon dia! A punt per a la ronda d'avui?", hudStreak: "dies seguits", hudBest: "millor mediana", hudTotal: "matins",
+      s1Intro: "Juga durant els 30 minuts després de despertar-te, abans del cafè i sempre amb el mateix dispositiu. És anònim: jugues amb un ID aleatori.",
+      idLabel: "El teu ID de jugador", idHelp: "Es desa en aquest dispositiu. En un dispositiu nou, escriu-hi el teu ID.",
+      ageLabel: "Edat", ageHelp: "En anys", agePh: "p. ex. 24", trialsLabel: "Rondes", trialsHelp: "Se'n recomanen 10",
+      errId: "Falta el teu ID. Escriu el que feies servir abans o torna a carregar la pàgina per obtenir-ne un de nou.", errAge: "Introdueix la teva edat com un nombre entre 16 i 99.",
+      startTest: "Som-hi!", s2Title: "Prova de reacció",
+      s2Intro: "<b>Vermell</b> vol dir esperar. Quan es posi <b>verd</b>, toca (o prem la <b>barra d'espai</b>) tan ràpid com puguis.",
+      padBegin: "Toca per començar", padWaitMsg: "Espera el verd…", tooEarly: "Massa aviat!", tooEarlyMsg: "Espera el verd. Aquesta ronda es repeteix.",
+      guessMsg: "Això ha estat endevinar, no reaccionar. Aquesta ronda es repeteix.", missed: "Fallada", round: "Ronda", bestToday: "Millor",
+      resultsTitle: "Els teus resultats", rankKicker: "El teu rang d'avui", chartTitle: "Cada reacció", lgReaction: "Reacció", lgMedian: "Mediana", lgLapse: "Zona de lapsus (> 500 ms)",
+      newPb: "Nou rècord personal!", pbWas: "Rècord personal: {m} ms",
+      stMedian: "Mediana", stMean: "Mitjana", stFastest: "Més ràpida", stSlowest: "Més lenta", stSd: "Desv. estàndard", stSpeed: "Velocitat", stLapses: "Lapsus", stFalse: "Sortides en fals", stSlow10: "10 % més lentes",
+      redo: "Tornar a jugar", cont: "Continuar",
+      s3Title: "Dades de son", s3Note: "Omple el que mostra la teva app de son. Una captura del resum de son ja n'hi ha prou; llegirem els valors més endavant.",
+      scoreLabel: "Puntuació de son", scoreHelp: "Llisca fins a la puntuació que mostra la teva app (0–100). No el toquis si la teva app no en dona.", noScore: "Sense puntuació",
+      bedLabel: "M'he adormit / me n'he anat al llit", wakeLabel: "M'he despertat", required: "(obligatori)", totalLabel: "Son total", awakeLabel: "Vegades despert",
+      hh: "h", mm: "min",
+      shotsTitle: "Captura del resum de son", shotsHelp: "PNG o JPG, fins a 4 imatges.",
+      shotsOff: "En la teva vista d'aquesta pàgina no es poden pujar captures. Envia la captura a l'equip de l'estudi, amb el teu ID i la data d'avui al nom.",
+      removeShot: "Treure la captura", errWake: "Ajusta l'hora a què et vas despertar (hores i minuts).",
+      errType: "«{name}» no és una imatge PNG, JPG o WebP.", errSize: "«{name}» supera els 20 MB.",
+      save: "Desar la ronda d'avui", saving: "S'està desant…", savedTitle: "Desat. Fins demà!", savedText: "La ronda d'avui s'ha desat: {n} reaccions, mediana {m} ms.",
+      nextHint: "Torna demà al matí per mantenir la ratxa.",
+      notSavedTitle: "No s'ha desat en línia", notSavedText: "La pàgina no s'ha pogut connectar amb la base de dades de l'estudi. Descarrega el teu registre o copia'l i envia'l a l'equip perquè no es perdi aquest dia.",
+      uploadFail: " No s'han pogut pujar una o més captures; envia-les a l'equip de l'estudi.",
+      download: "Descarregar el meu registre", copy: "Copiar com a text", downloaded: "Descarregat.", dlFail: "La descàrrega s'ha cancel·lat o no està disponible. Copia el registre.",
+      copied: "Copiat. Enganxa'l en un missatge a l'equip de l'estudi.", copyFail: "Aquí no es pot copiar. Descarrega el registre.", newEntry: "Nou registre" }
+  };
+  const STAGES = {
+    en: { stagesTitle: "Sleep stages", stagesHelp: "If your app shows them", deepLabel: "Deep sleep", remLabel: "REM sleep", lightLabel: "Light sleep" },
+    de: { stagesTitle: "Schlafphasen", stagesHelp: "Falls deine App sie anzeigt", deepLabel: "Tiefschlaf", remLabel: "REM-Schlaf", lightLabel: "Leichtschlaf" },
+    nl: { stagesTitle: "Slaapfasen", stagesHelp: "Als je app ze toont", deepLabel: "Diepe slaap", remLabel: "REM-slaap", lightLabel: "Lichte slaap" },
+    fr: { stagesTitle: "Phases de sommeil", stagesHelp: "Si ton appli les affiche", deepLabel: "Sommeil profond", remLabel: "Sommeil paradoxal (REM)", lightLabel: "Sommeil léger" },
+    es: { stagesTitle: "Fases del sueño", stagesHelp: "Si tu app las muestra", deepLabel: "Sueño profundo", remLabel: "Sueño REM", lightLabel: "Sueño ligero" },
+    ca: { stagesTitle: "Fases del son", stagesHelp: "Si la teva app les mostra", deepLabel: "Son profund", remLabel: "Son REM", lightLabel: "Son lleuger" }
+  };
+  for (const k in STAGES) Object.assign(I18N[k], STAGES[k]);
+  const EXTRA = {
+    en: { practice: "Practice", practiceMsg: "Practice round, it doesn't count yet", nowCounts: "Practice done. Now it counts!", stop: "Stop",
+      disturbedLabel: "Something disturbed the test",
+      disturbedHelp: "Tick this if you were distracted during the test, for example by a notification, someone talking to you, a noise, or an accidental tap. Your times are still saved, just marked. An honest tick helps the study more than a good-looking result.",
+      histTitle: "Your recent mornings (median)", pbFirst: "First record set: {m} ms",
+      warnTitle: "Please check these values", warnTotalBed: "Your total sleep ({a}) is longer than the time between going to bed and waking up ({b}).",
+      warnStages: "Deep, REM and light sleep add up to {a}, more than your total sleep ({b}).", warnWindow: "Bedtime to wake-up is {b}. Please check the hours (24-hour clock).",
+      warnWakeLate: "Your wake-up time is {a} before the test. Did you set today's wake-up time?", fixBtn: "Let me fix it", saveAnyway: "Values are correct, save" },
+    de: { practice: "Übung", practiceMsg: "Übungsrunde, zählt noch nicht", nowCounts: "Übung vorbei. Jetzt zählt's!", stop: "Abbrechen",
+      disturbedLabel: "Beim Test war ich abgelenkt",
+      disturbedHelp: "Setz das Häkchen, wenn dich während des Tests etwas abgelenkt hat, z. B. eine Benachrichtigung, jemand hat dich angesprochen, ein Geräusch oder du hast aus Versehen getippt. Deine Zeiten werden trotzdem gespeichert, nur markiert. Ein ehrliches Häkchen hilft der Studie mehr als ein schönes Ergebnis.",
+      histTitle: "Deine letzten Morgen (Median)", pbFirst: "Erste Bestzeit gesetzt: {m} ms",
+      warnTitle: "Bitte prüf diese Werte", warnTotalBed: "Deine Schlafdauer ({a}) ist länger als die Zeit zwischen Zubettgehen und Aufwachen ({b}).",
+      warnStages: "Tief-, REM- und Leichtschlaf ergeben zusammen {a}, mehr als deine Schlafdauer ({b}).", warnWindow: "Vom Zubettgehen bis zum Aufwachen sind es {b}. Bitte prüf die Uhrzeiten (24-Stunden-Format).",
+      warnWakeLate: "Deine Aufwachzeit liegt {a} vor dem Test. Hast du die heutige Aufwachzeit eingestellt?", fixBtn: "Ich korrigiere es", saveAnyway: "Werte stimmen, speichern" },
+    nl: { practice: "Oefening", practiceMsg: "Oefenronde, telt nog niet mee", nowCounts: "Oefenen gedaan. Nu telt het!", stop: "Stoppen",
+      disturbedLabel: "Ik werd gestoord tijdens de test",
+      disturbedHelp: "Vink dit aan als iets je afleidde tijdens de test, bijvoorbeeld een melding, iemand die tegen je praatte, een geluid of een tik per ongeluk. Je tijden worden toch bewaard, alleen gemarkeerd. Een eerlijk vinkje helpt de studie meer dan een mooi resultaat.",
+      histTitle: "Jouw laatste ochtenden (mediaan)", pbFirst: "Eerste record gezet: {m} ms",
+      warnTitle: "Controleer deze waarden", warnTotalBed: "Je totale slaap ({a}) is langer dan de tijd tussen naar bed gaan en wakker worden ({b}).",
+      warnStages: "Diepe, REM- en lichte slaap samen zijn {a}, meer dan je totale slaap ({b}).", warnWindow: "Van naar bed gaan tot wakker worden is {b}. Controleer de uren (24-uursnotatie).",
+      warnWakeLate: "Je wektijd ligt {a} vóór de test. Heb je de wektijd van vandaag ingesteld?", fixBtn: "Ik pas het aan", saveAnyway: "Waarden kloppen, bewaren" },
+    fr: { practice: "Essai", practiceMsg: "Manche d'essai, elle ne compte pas encore", nowCounts: "Essai terminé. Maintenant, ça compte !", stop: "Arrêter",
+      disturbedLabel: "J'ai été dérangé pendant le test",
+      disturbedHelp: "Coche cette case si quelque chose t'a distrait pendant le test, par exemple une notification, quelqu'un qui t'a parlé, un bruit ou une touche accidentelle. Tes temps sont quand même enregistrés, simplement marqués. Une coche honnête aide plus l'étude qu'un beau résultat.",
+      histTitle: "Tes derniers matins (médiane)", pbFirst: "Premier record établi : {m} ms",
+      warnTitle: "Vérifie ces valeurs", warnTotalBed: "Ton sommeil total ({a}) est plus long que le temps entre le coucher et le réveil ({b}).",
+      warnStages: "Sommeil profond, paradoxal et léger font ensemble {a}, plus que ton sommeil total ({b}).", warnWindow: "Du coucher au réveil, il y a {b}. Vérifie les heures (format 24 h).",
+      warnWakeLate: "Ton heure de réveil est {a} avant le test. As-tu réglé l'heure de réveil d'aujourd'hui ?", fixBtn: "Je corrige", saveAnyway: "Les valeurs sont justes, enregistrer" },
+    es: { practice: "Práctica", practiceMsg: "Ronda de práctica, aún no cuenta", nowCounts: "Práctica terminada. ¡Ahora cuenta!", stop: "Parar",
+      disturbedLabel: "Algo me distrajo durante la prueba",
+      disturbedHelp: "Marca esta casilla si algo te distrajo durante la prueba, por ejemplo una notificación, alguien que te habló, un ruido o un toque sin querer. Tus tiempos se guardan igualmente, solo quedan marcados. Una marca sincera ayuda más al estudio que un buen resultado.",
+      histTitle: "Tus últimas mañanas (mediana)", pbFirst: "Primer récord: {m} ms",
+      warnTitle: "Revisa estos valores", warnTotalBed: "Tu sueño total ({a}) es más largo que el tiempo entre acostarte y despertarte ({b}).",
+      warnStages: "Sueño profundo, REM y ligero suman {a}, más que tu sueño total ({b}).", warnWindow: "De acostarte a despertarte hay {b}. Revisa las horas (formato de 24 h).",
+      warnWakeLate: "Tu hora de despertar es {a} antes de la prueba. ¿Pusiste la hora de despertar de hoy?", fixBtn: "Lo corrijo", saveAnyway: "Los valores son correctos, guardar" },
+    ca: { practice: "Pràctica", practiceMsg: "Ronda de pràctica, encara no compta", nowCounts: "Pràctica acabada. Ara compta!", stop: "Aturar",
+      disturbedLabel: "Alguna cosa m'ha distret durant la prova",
+      disturbedHelp: "Marca aquesta casella si alguna cosa t'ha distret durant la prova, per exemple una notificació, algú que et parlava, un soroll o un toc sense voler. Els teus temps es desen igualment, només queden marcats. Una marca sincera ajuda més l'estudi que un bon resultat.",
+      histTitle: "Els teus darrers matins (mediana)", pbFirst: "Primer rècord: {m} ms",
+      warnTitle: "Revisa aquests valors", warnTotalBed: "El teu son total ({a}) és més llarg que el temps entre anar a dormir i despertar-te ({b}).",
+      warnStages: "Son profund, REM i lleuger sumen {a}, més que el teu son total ({b}).", warnWindow: "D'anar a dormir a despertar-te hi ha {b}. Revisa les hores (format de 24 h).",
+      warnWakeLate: "La teva hora de despertar és {a} abans de la prova. Has posat l'hora de despertar d'avui?", fixBtn: "Ho corregeixo", saveAnyway: "Els valors són correctes, desar" }
+  };
+  for (const k in EXTRA) Object.assign(I18N[k], EXTRA[k]);
+  const LANG_ORDER = ["en", "de", "nl", "fr", "es", "ca"];
+  const HTML_LANG = { en: "en", de: "de", nl: "nl-BE", fr: "fr", es: "es", ca: "ca" };
+
+  const $ = (id) => document.getElementById(id);
+  const LS_KEY = "wakeup-test-profile", LS_LANG = "wakeup-test-lang", LS_HIST = "wakeup-test-history";
+  const LAPSE_MS = 500, ANTICIPATION_MS = 100, TIMEOUT_MS = 3000, MIN_WAIT = 2000, MAX_WAIT = 6000, PRACTICE = 1;
+  const reduceMotion = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  { const hr = new Date().getHours(); if (hr >= 4 && hr < 12) document.documentElement.classList.add("morning"); }
+  function loadHist() { try { const h = JSON.parse(localStorage.getItem(LS_HIST) || "null"); if (h && Array.isArray(h.entries)) return h; } catch (e) {} return { bestSingle: null, entries: [] }; }
+  function saveHist(h) { try { localStorage.setItem(LS_HIST, JSON.stringify(h)); } catch (e) {} }
+
+  let lang = "en";
+  try { lang = localStorage.getItem(LS_LANG) || ""; } catch (e) {}
+  if (!I18N[lang]) {
+    const nav = (navigator.language || "en").toLowerCase();
+    lang = ["ca", "es", "fr", "nl", "de"].find(c => nav.startsWith(c)) || "en";
+  }
+  const t = (key, vars) => {
+    let s = (I18N[lang] && I18N[lang][key]) ?? I18N.en[key] ?? key;
+    if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+    return s;
+  };
+
+  // ===== CONFIG: paste your Google Apps Script web-app URL here (it ends in /exec) =====
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXTFn8eKhNMGMmi1JQ7_RjF_s5WbvVTXU9Y4TcOQl84RPh44BvxfhfL1uVo1WPYJt9/exec";
+  const TOKEN = "wakeup-2026"; // must be the same as TOKEN in Code.gs
+  // ===================================================================================
+  let lastEntry = null, shots = [], T = null, step = 1;
+
+  function localDate(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+
+  // ---------- language ----------
+  const langBox = $("langs");
+  LANG_ORDER.forEach((code) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = code.toUpperCase(); b.title = I18N[code]._name; b.setAttribute("aria-label", I18N[code]._name); b.lang = HTML_LANG[code]; b.dataset.code = code;
+    b.addEventListener("click", () => setLang(code));
+    langBox.appendChild(b);
+  });
+  function applyLang() {
+    document.documentElement.lang = HTML_LANG[lang];
+    document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
+    document.querySelectorAll("[data-t-html]").forEach(el => { el.innerHTML = t(el.dataset.tHtml); });
+    langBox.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.code === lang)));
+    $("p-age").placeholder = t("agePh");
+    document.querySelectorAll(".tp .unit-h").forEach(el => el.textContent = t("hh"));
+    document.querySelectorAll(".tp .unit-m").forEach(el => el.textContent = t("mm"));
+    if (T && T.phase === "idle") $("pad-msg").textContent = t("padBegin");
+    if (T && T.phase === "done") renderResult();
+    updateProgress();
+    renderThumbs();
+  }
+  function setLang(code) { lang = code; try { localStorage.setItem(LS_LANG, code); } catch (e) {} applyLang(); }
+
+  // ---------- profile ----------
+  function newId() {
+    const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const r = new Uint32Array(6); crypto.getRandomValues(r);
+    return "P-" + Array.from(r, v => abc[v % abc.length]).join("");
+  }
+  const cleanId = (v) => v.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 12);
+  let storedProfile = null;
+  try { storedProfile = JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch (e) {}
+  if (storedProfile && storedProfile.anonId) {
+    $("p-id").value = storedProfile.anonId;
+    $("p-age").value = storedProfile.age || "";
+    if (storedProfile.trials) $("p-trials").value = String(storedProfile.trials);
+  } else {
+    $("p-id").value = newId();
+  }
+
+  function updateProgress() {
+    for (let i = 1; i <= 4; i++) $("pg" + i).className = i < step ? "done" : (i === step ? "on" : "");
+    $("pg-label").textContent = t("step" + step);
+    $("pg-num").textContent = step + " / 4";
+  }
+  function setStep(n) {
+    step = n;
+    for (let i = 1; i <= 4; i++) $("s" + i).hidden = i !== n;
+    updateProgress();
+    window.scrollTo(0, 0);
+  }
+
+  $("to-test").addEventListener("click", () => {
+    const anonId = cleanId($("p-id").value);
+    const age = parseInt($("p-age").value, 10);
+    const err = $("s1-err");
+    if (anonId.length < 4) { err.textContent = t("errId"); err.hidden = false; return; }
+    if (!(age >= 16 && age <= 99)) { err.textContent = t("errAge"); err.hidden = false; return; }
+    err.hidden = true;
+    $("p-id").value = anonId;
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ anonId, age, trials: +$("p-trials").value })); } catch (e) {}
+    resetTest();
+    setStep(2);
+  });
+
+  // ---------- reaction test ----------
+  const pad = $("pad");
+  function clearTimers() { if (!T) return; clearTimeout(T.waitTimer); clearTimeout(T.timeout); clearTimeout(T.nextTimer); (T.cdTimers || []).forEach(clearTimeout); }
+  function resetTest() {
+    clearTimers();
+    T = { n: +$("p-trials").value, phase: "idle", trials: [], practice: [], falseStarts: 0, practiceFalseStarts: 0, waitTimer: null, timeout: null, nextTimer: null, cdTimers: [], t0: 0, startedAt: null };
+    pad.className = "pad idle";
+    $("pad-big").textContent = "READY?";
+    $("pad-msg").textContent = t("padBegin");
+    $("pad-stop").hidden = true;
+    $("test-result").hidden = true;
+    $("test-intro").hidden = false;
+    $("disturbed").checked = false;
+    pad.hidden = false;
+    renderDots();
+  }
+  const inPractice = () => T.practice.length < PRACTICE;
+  function setPad(cls) { pad.className = "pad full " + cls; }
+  function renderDots() {
+    const d = $("pad-dots"); d.innerHTML = "";
+    if (T.phase !== "idle" && T.phase !== "countdown" && inPractice()) {
+      $("pad-count").textContent = PRACTICE > 1 ? `${t("practice")} ${T.practice.length + 1}/${PRACTICE}` : t("practice");
+      return;
+    }
+    for (let i = 0; i < T.n; i++) {
+      const el = document.createElement("i");
+      if (i < T.trials.length) el.className = T.trials[i].rt == null ? "x" : "d";
+      d.appendChild(el);
+    }
+    $("pad-count").textContent = (T.phase === "idle" || T.phase === "countdown") ? "" : `${t("round")} ${Math.min(T.trials.length + 1, T.n)}/${T.n}`;
+  }
+  function startCountdown() {
+    T.phase = "countdown";
+    $("pad-stop").hidden = false;
+    $("pad-msg").textContent = "";
+    renderDots();
+    [3, 2, 1].forEach((n, i) => {
+      T.cdTimers.push(setTimeout(() => { setPad("count-down"); $("pad-big").textContent = String(n); }, i * 750));
+    });
+    T.cdTimers.push(setTimeout(scheduleStimulus, 3 * 750));
+  }
+  function scheduleStimulus() {
+    T.phase = "wait";
+    setPad("wait");
+    $("pad-big").textContent = "WAIT";
+    $("pad-msg").textContent = inPractice() ? t("practiceMsg") : t("padWaitMsg");
+    renderDots();
+    const delay = MIN_WAIT + Math.random() * (MAX_WAIT - MIN_WAIT);
+    T.currentWait = Math.round(delay);
+    T.waitTimer = setTimeout(showStimulus, delay);
+  }
+  function showStimulus() {
+    setPad("go");
+    $("pad-big").textContent = "TAP";
+    $("pad-msg").textContent = "";
+    requestAnimationFrame(() => {
+      T.t0 = performance.now();
+      T.phase = "go";
+      T.timeout = setTimeout(() => { if (T.phase === "go") record(null, "timeout"); }, TIMEOUT_MS);
+    });
+  }
+  function showEarly(msgKey) {
+    T.phase = "early";
+    if (inPractice()) T.practiceFalseStarts++; else T.falseStarts++;
+    setPad("early");
+    $("pad-big").textContent = t("tooEarly");
+    $("pad-msg").textContent = t(msgKey);
+    if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) {} }
+    T.nextTimer = setTimeout(() => { if (T.phase === "early") scheduleStimulus(); }, 1500);
+  }
+  function record(stamp, how) {
+    clearTimeout(T.timeout);
+    const rt = stamp == null ? null : Math.round(stamp - T.t0);
+    if (rt != null && rt < ANTICIPATION_MS) { showEarly("guessMsg"); return; }
+    const practice = inPractice();
+    (practice ? T.practice : T.trials).push({ rt, timeout: how === "timeout", waitMs: T.currentWait });
+    T.phase = "feedback";
+    setPad("feedback");
+    $("pad-big").textContent = rt == null ? t("missed") : rt + " ms";
+    const practiceJustDone = practice && T.practice.length === PRACTICE;
+    $("pad-msg").textContent = practiceJustDone ? t("nowCounts") : "";
+    renderDots();
+    T.nextTimer = setTimeout(() => { if (T.trials.length < T.n) scheduleStimulus(); else finishTest(); }, practiceJustDone ? 2000 : 1200);
+  }
+  function press(e) {
+    if (!T) return;
+    if (e.type === "keydown") { if (e.code !== "Space" && e.key !== " ") return; if (e.repeat) return; }
+    if (e.type === "pointerdown" && e.button > 0) return;
+    const stamp = (e.timeStamp && e.timeStamp > 0 && e.timeStamp <= performance.now() + 50) ? e.timeStamp : performance.now();
+    if (T.phase === "idle") { e.preventDefault(); T.startedAt = new Date(); T.inputMethod = e.type === "keydown" ? "keyboard" : (e.pointerType || "pointer"); startCountdown(); return; }
+    if (T.phase === "wait") { e.preventDefault(); clearTimeout(T.waitTimer); showEarly("tooEarlyMsg"); return; }
+    if (T.phase === "go") { e.preventDefault(); record(stamp, "response"); return; }
+  }
+  pad.addEventListener("pointerdown", press);
+  document.addEventListener("keydown", (e) => { if (!$("s2").hidden && $("test-result").hidden) press(e); });
+  $("pad-stop").addEventListener("pointerdown", (e) => e.stopPropagation());
+  $("pad-stop").addEventListener("click", (e) => { e.stopPropagation(); resetTest(); });
+
+  function stats(trials, falseStarts) {
+    const sorted = trials.filter(x => x.rt != null).map(x => x.rt).sort((a, b) => a - b);
+    const n = sorted.length;
+    const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const mean = avg(sorted);
+    const median = n ? (n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2) : null;
+    const sd = n > 1 ? Math.sqrt(sorted.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : null;
+    const k = Math.max(1, Math.ceil(n * 0.1));
+    const r1 = (v) => v == null ? null : Math.round(v * 10) / 10;
+    const r3 = (v) => v == null ? null : Math.round(v * 1000) / 1000;
+    return {
+      trials: trials.length, validResponses: n,
+      meanMs: r1(mean), medianMs: r1(median),
+      fastestMs: n ? sorted[0] : null, slowestMs: n ? sorted[n - 1] : null,
+      sdMs: r1(sd), cvPercent: mean && sd != null ? r1(sd / mean * 100) : null,
+      fastest10PctMeanMs: r1(avg(sorted.slice(0, k))), slowest10PctMeanMs: r1(avg(sorted.slice(Math.max(0, n - k)))),
+      meanSpeedPerSec: n ? r3(avg(sorted.map(v => 1000 / v))) : null,
+      lapses: trials.filter(x => x.rt == null || x.rt > LAPSE_MS).length,
+      timeouts: trials.filter(x => x.timeout).length,
+      falseStarts
+    };
+  }
+  function renderStats(el, s) {
+    const items = [
+      ["stMedian", s.medianMs, "ms"], ["stMean", s.meanMs, "ms"], ["stFastest", s.fastestMs, "ms"],
+      ["stSlowest", s.slowestMs, "ms"], ["stSd", s.sdMs, "ms"], ["stSpeed", s.meanSpeedPerSec, "1/s"],
+      ["stLapses", s.lapses, ""], ["stFalse", s.falseStarts, ""], ["stSlow10", s.slowest10PctMeanMs, "ms"]
+    ];
+    el.innerHTML = "";
+    for (const [k, v, u] of items) {
+      const d = document.createElement("div");
+      const dt = document.createElement("dt"); dt.textContent = t(k);
+      const dd = document.createElement("dd"); dd.textContent = v == null ? "–" : String(v);
+      if (u && v != null) { const sm = document.createElement("small"); sm.textContent = " " + u; dd.appendChild(sm); }
+      d.append(dt, dd); el.appendChild(d);
+    }
+  }
+  function renderBars(targetId, items, median, aria) {
+    const W = 600, H = 260, L = 46, R = 12, TOP = 22, B = 30;
+    const vals = items.map(x => x.v);
+    const yMax = Math.max(600, Math.ceil((Math.max(...vals) + 50) / 100) * 100);
+    const y = (v) => TOP + (H - TOP - B) * (1 - v / yMax);
+    const n = items.length, slot = (W - L - R) / n, bw = Math.min(36, slot * 0.62);
+    const step = yMax <= 800 ? 100 : yMax <= 1600 ? 200 : 500;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}">`;
+    s += `<rect class="ch-zone" x="${L}" y="${y(yMax)}" width="${W - L - R}" height="${y(LAPSE_MS) - y(yMax)}"/>`;
+    for (let v = 0; v <= yMax; v += step) {
+      s += `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ch-txt" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+    }
+    items.forEach((it, i) => {
+      const x = L + slot * i + (slot - bw) / 2;
+      s += `<rect class="${it.lapse ? "ch-bar lapse" : "ch-bar"}" x="${x}" y="${y(it.v)}" width="${bw}" height="${y(0) - y(it.v)}" rx="4"/>`;
+      if (n <= 15) s += `<text class="ch-val" x="${x + bw / 2}" y="${y(it.v) - 5}" text-anchor="middle">${it.top}</text>`;
+      s += `<text class="ch-txt" x="${x + bw / 2}" y="${H - 10}" text-anchor="middle">${it.label}</text>`;
+    });
+    if (median != null) s += `<line class="ch-med" x1="${L}" x2="${W - R}" y1="${y(median)}" y2="${y(median)}"/>`;
+    s += `<text class="ch-txt" x="${L}" y="12">ms</text></svg>`;
+    $(targetId).innerHTML = s;
+  }
+  function renderResult() {
+    renderBars("chart", T.trials.map((x, i) => ({ v: x.rt == null ? TIMEOUT_MS : x.rt, top: x.rt == null ? "×" : x.rt, label: i + 1, lapse: x.rt == null || x.rt > LAPSE_MS })), T.stats.medianMs, t("chartTitle"));
+    renderStats($("stats"), T.stats);
+    const pb = $("pb-badge");
+    if (T.stats.fastestMs == null) pb.hidden = true;
+    else if (T.isPb) { pb.textContent = "🏆 " + t("newPb") + " " + T.stats.fastestMs + " ms"; pb.hidden = false; }
+    else if (T.prevBest == null) { pb.textContent = t("pbFirst", { m: T.stats.fastestMs }); pb.hidden = false; }
+    else { pb.textContent = t("pbWas", { m: T.prevBest }); pb.hidden = false; }
+  }
+  function confetti() {
+    if (reduceMotion) return;
+    const box = $("confetti"); box.innerHTML = "";
+    const colors = ["var(--accent)", "var(--accent-2)", "var(--go)", "var(--wait)"];
+    for (let i = 0; i < 44; i++) {
+      const c = document.createElement("i");
+      c.style.left = Math.random() * 100 + "%";
+      c.style.background = colors[i % colors.length];
+      c.style.animationDelay = Math.random() * 0.4 + "s";
+      c.style.animationDuration = 1.2 + Math.random() * 0.9 + "s";
+      box.appendChild(c);
+    }
+    setTimeout(() => { box.innerHTML = ""; }, 2800);
+  }
+  function finishTest() {
+    T.phase = "done";
+    T.stats = stats(T.trials, T.falseStarts);
+    const h = loadHist();
+    T.prevBest = h.bestSingle ?? null;
+    T.isPb = T.stats.fastestMs != null && T.prevBest != null && T.stats.fastestMs < T.prevBest;
+    pad.className = "pad";
+    $("pad-stop").hidden = true;
+    pad.hidden = true;
+    renderResult();
+    $("test-result").hidden = false;
+    window.scrollTo(0, 0);
+    if (T.isPb) confetti();
+  }
+  $("redo").addEventListener("click", resetTest);
+  $("to-after").addEventListener("click", () => {
+    if (!tpGet("wake")) {
+      const d = new Date((T.startedAt || new Date()).getTime() - 10 * 60000);
+      tpSet("wake", d.getHours(), d.getMinutes());
+    }
+    setStep(3);
+  });
+
+  // ---------- alarm-style time pickers ----------
+  const pickers = {};
+  function buildPicker(key, maxHour, isDuration) {
+    const box = $("tp-" + key);
+    const h = document.createElement("select"), m = document.createElement("select");
+    h.id = "tp-" + key + "-h"; m.id = "tp-" + key + "-m";
+    h.add(new Option("––", "")); m.add(new Option("––", ""));
+    for (let i = 0; i <= maxHour; i++) h.add(new Option(isDuration ? String(i) : String(i).padStart(2, "0"), String(i)));
+    for (let i = 0; i < 60; i++) m.add(new Option(String(i).padStart(2, "0"), String(i)));
+    h.addEventListener("change", () => { if (h.value !== "" && m.value === "") m.value = "0"; if (h.value === "") m.value = ""; });
+    m.addEventListener("change", () => { if (m.value !== "" && h.value === "") h.value = "0"; });
+    if (isDuration) {
+      const uh = document.createElement("span"); uh.className = "unit unit-h";
+      const um = document.createElement("span"); um.className = "unit unit-m";
+      box.append(h, uh, m, um);
+    } else {
+      const colon = document.createElement("span"); colon.className = "colon"; colon.textContent = ":"; colon.setAttribute("aria-hidden", "true");
+      box.append(h, colon, m);
+    }
+    pickers[key] = { h, m };
+  }
+  buildPicker("bed", 23, false);
+  buildPicker("wake", 23, false);
+  buildPicker("total", 14, true);
+  buildPicker("deep", 8, true);
+  buildPicker("rem", 8, true);
+  buildPicker("light", 12, true);
+  const durMin = (key) => { const v = tpGet(key); return v ? v.h * 60 + v.m : null; };
+  function tpGet(key) { const p = pickers[key]; if (p.h.value === "" || p.m.value === "") return null; return { h: +p.h.value, m: +p.m.value }; }
+  function tpSet(key, h, m) { pickers[key].h.value = String(h); pickers[key].m.value = String(m); }
+  function tpClear(key) { pickers[key].h.value = ""; pickers[key].m.value = ""; }
+  const hhmm = (v) => v ? String(v.h).padStart(2, "0") + ":" + String(v.m).padStart(2, "0") : null;
+
+  // ---------- step 3 ----------
+  let scoreSet = false;
+  function updateScore() {
+    $("score-out").textContent = scoreSet ? $("sl-score").value : "–";
+    $("score-wrap").classList.toggle("unset", !scoreSet);
+    $("score-clear").hidden = !scoreSet;
+  }
+  $("sl-score").addEventListener("input", () => { scoreSet = true; updateScore(); });
+  $("score-clear").addEventListener("click", () => { scoreSet = false; $("sl-score").value = "50"; updateScore(); });
+  const num = (id) => { const v = $(id).value.trim(); if (v === "") return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
+
+  $("shot-input").addEventListener("change", (e) => {
+    const files = Array.from(e.target.files || []);
+    const err = $("s3-err");
+    for (const f of files) {
+      if (shots.length >= 4) break;
+      if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { err.textContent = t("errType", { name: f.name }); err.hidden = false; continue; }
+      if (f.size > 20 * 1024 * 1024) { err.textContent = t("errSize", { name: f.name }); err.hidden = false; continue; }
+      shots.push({ file: f, url: URL.createObjectURL(f) });
+    }
+    e.target.value = "";
+    renderThumbs();
+  });
+  function renderThumbs() {
+    const box = $("thumbs"); box.innerHTML = "";
+    shots.forEach((s, i) => {
+      const fig = document.createElement("figure");
+      const img = document.createElement("img"); img.src = s.url; img.alt = "Screenshot " + (i + 1);
+      const b = document.createElement("button"); b.type = "button"; b.textContent = "×"; b.setAttribute("aria-label", t("removeShot") + " " + (i + 1));
+      b.addEventListener("click", () => { URL.revokeObjectURL(s.url); shots.splice(i, 1); renderThumbs(); });
+      fig.append(img, b); box.appendChild(fig);
+    });
+  }
+
+  function shrinkImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const max = 1600, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve({ type: "image/jpeg", data: c.toDataURL("image/jpeg", 0.85).split(",")[1] });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image")); };
+      img.src = url;
+    });
+  }
+  function minutesSince(v, date) {
+    if (!v) return null;
+    const w = new Date(date); w.setHours(v.h, v.m, 0, 0);
+    if (w > date) w.setDate(w.getDate() - 1);
+    return Math.round((date - w) / 60000);
+  }
+  function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "anon"; }
+
+  function fmtDur(min) { return Math.floor(min / 60) + " " + t("hh") + " " + String(min % 60).padStart(2, "0") + " " + t("mm"); }
+  function plausibility(wake) {
+    const out = [], bed = tpGet("bed"), total = durMin("total"), started = T.startedAt || new Date();
+    if (bed) {
+      const win = ((wake.h * 60 + wake.m) - (bed.h * 60 + bed.m) + 1440) % 1440;
+      if (win < 120 || win > 960) out.push(t("warnWindow", { b: fmtDur(win) }));
+      else if (total != null && total > win + 10) out.push(t("warnTotalBed", { a: fmtDur(total), b: fmtDur(win) }));
+    }
+    const parts = ["deep", "rem", "light"].map(durMin).filter(v => v != null);
+    if (total != null && parts.length) { const sum = parts.reduce((a, b) => a + b, 0); if (sum > total + 10) out.push(t("warnStages", { a: fmtDur(sum), b: fmtDur(total) })); }
+    const since = minutesSince(wake, started);
+    if (since != null && since > 360) out.push(t("warnWakeLate", { a: fmtDur(since) }));
+    return out;
+  }
+  let warnAck = false;
+  function hideWarn() { $("warnbox").hidden = true; }
+  $("s3").addEventListener("change", () => { warnAck = false; hideWarn(); });
+  $("warn-fix").addEventListener("click", hideWarn);
+  $("warn-save").addEventListener("click", () => { warnAck = true; hideWarn(); $("submit").click(); });
+
+  $("submit").addEventListener("click", async () => {
+    const err = $("s3-err"); err.hidden = true;
+    const wake = tpGet("wake");
+    if (!wake) { err.textContent = t("errWake"); err.hidden = false; return; }
+    if (!warnAck) {
+      const warns = plausibility(wake);
+      if (warns.length) {
+        const ul = $("warnlist"); ul.innerHTML = "";
+        warns.forEach(w => { const li = document.createElement("li"); li.textContent = w; ul.appendChild(li); });
+        $("warnbox").hidden = false;
+        $("warnbox").scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+        return;
+      }
+    }
+    const btn = $("submit"); btn.disabled = true; btn.textContent = t("saving");
+
+    let profile = {}; try { profile = JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch (e) {}
+    const anonId = cleanId($("p-id").value) || profile.anonId || "P-UNKNOWN";
+    const started = T.startedAt || new Date();
+    const id = localDate(started) + "_" + slug(anonId) + "_" + Math.random().toString(36).slice(2, 7);
+    const total = tpGet("total");
+
+    const entry = {
+      id,
+      createdAt: new Date().toISOString(),
+      date: localDate(started),
+      anonId,
+      age: Number($("p-age").value) || profile.age || null,
+      language: lang,
+      test: {
+        startedAt: started.toISOString(),
+        trialsRequested: T.n,
+        inputMethod: T.inputMethod || null,
+        reactionsMs: T.trials.map(x => x.rt),
+        waitsMs: T.trials.map(x => x.waitMs),
+        practiceMs: T.practice.map(x => x.rt),
+        practiceFalseStarts: T.practiceFalseStarts,
+        disturbed: $("disturbed").checked,
+        ...T.stats
+      },
+      minutesAfterWaking: minutesSince(wake, started),
+      sleep: {
+        bedTime: hhmm(tpGet("bed")),
+        wakeTime: hhmm(wake),
+        sleepScore: scoreSet ? Number($("sl-score").value) : null,
+        totalSleepMin: total ? total.h * 60 + total.m : null,
+        deepMin: durMin("deep"),
+        remMin: durMin("rem"),
+        lightMin: durMin("light"),
+        timesAwake: num("sl-awake")
+      },
+      screenshots: [],
+      client: { userAgent: navigator.userAgent.slice(0, 300), screen: `${screen.width}x${screen.height}`, tzOffsetMin: -new Date().getTimezoneOffset() }
+    };
+
+    let uploadNote = "";
+    let images = [];
+    for (const sh of shots) {
+      try { images.push(await shrinkImage(sh.file)); } catch (e) { uploadNote = t("uploadFail"); }
+    }
+    entry.screenshots = images.length;
+    lastEntry = entry;
+    let saved = false;
+    if (/^https:\/\/script\.google\.com\//.test(SCRIPT_URL)) {
+      const body = JSON.stringify({ token: TOKEN, entry, screenshots: images });
+      for (let attempt = 0; attempt < 2 && !saved; attempt++) {
+        try {
+          const res = await fetch(SCRIPT_URL, { method: "POST", body });
+          const j = await res.json();
+          saved = !!(j && j.ok);
+        } catch (e) {
+          await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+        }
+      }
+    }
+    if (!saved) lastEntry = { ...entry, screenshots: images.length };
+    btn.disabled = false; btn.textContent = t("save");
+    warnAck = false;
+    const h = loadHist();
+    if (!entry.test.disturbed && entry.test.medianMs != null) {
+      h.entries.push({ date: entry.date, median: entry.test.medianMs });
+      h.entries = h.entries.slice(-60);
+      if (entry.test.fastestMs != null && (h.bestSingle == null || entry.test.fastestMs < h.bestSingle)) h.bestSingle = entry.test.fastestMs;
+      saveHist(h);
+    }
+    const recent = h.entries.slice(-14);
+    if (recent.length) {
+      renderBars("hist-chart", recent.map(x => ({ v: x.median, top: Math.round(x.median), label: x.date.slice(8, 10) + "." + x.date.slice(5, 7) + ".", lapse: x.median > LAPSE_MS })), null, t("histTitle"));
+      $("hist-wrap").hidden = false;
+    } else $("hist-wrap").hidden = true;
+    if (saved) {
+      $("done-title").textContent = t("savedTitle");
+      $("done-text").textContent = t("savedText", { n: entry.test.validResponses, m: entry.test.medianMs ?? "–" }) + uploadNote;
+      $("fallback").hidden = true;
+    } else {
+      $("done-title").textContent = t("notSavedTitle");
+      $("done-text").textContent = t("notSavedText") + uploadNote;
+      $("fallback").hidden = false;
+    }
+    $("fallback-status").textContent = "";
+    shots.forEach(s => URL.revokeObjectURL(s.url)); shots = []; renderThumbs();
+    setStep(4);
+  });
+
+  $("dl-json").addEventListener("click", async () => {
+    const st = $("fallback-status");
+    try {
+      const blob = new Blob([JSON.stringify(lastEntry, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `wakeup_${lastEntry.id}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      st.textContent = t("downloaded"); st.className = "statusline ok";
+    } catch (e) { st.textContent = t("dlFail"); st.className = "statusline bad"; }
+  });
+  $("copy-json").addEventListener("click", async () => {
+    const st = $("fallback-status");
+    try { await navigator.clipboard.writeText(JSON.stringify(lastEntry)); st.textContent = t("copied"); st.className = "statusline ok"; }
+    catch (e) { st.textContent = t("copyFail"); st.className = "statusline bad"; }
+  });
+  $("again").addEventListener("click", () => {
+    $("sl-awake").value = "";
+    ["bed", "wake", "total", "deep", "rem", "light"].forEach(tpClear);
+    warnAck = false; hideWarn();
+    scoreSet = false; $("sl-score").value = "50"; updateScore();
+    setStep(1);
+  });
+
+  setStep(1);
+  applyLang();
+})();
+</script>
+
+</body>
+</html>
