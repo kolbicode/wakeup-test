@@ -83,6 +83,7 @@ header.top { display: flex; align-items: center; justify-content: space-between;
 @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 700; min-width: 0; }
 .field small { font-weight: 400; color: var(--muted); }
+.field.missing .wheel, .field.missing .slider { outline: 2px solid var(--warn); outline-offset: 3px; border-radius: 14px; }
 input, select {
   font: inherit; font-weight: 400; color: var(--fg); background: var(--sunk); border: 1px solid var(--line);
   border-radius: 12px; padding: 11px 12px; width: 100%; min-width: 0;
@@ -103,10 +104,16 @@ input:focus-visible, select:focus-visible, button:focus-visible, .pad:focus-visi
 .note { font-size: 14px; color: var(--muted); background: var(--sunk); border-radius: 12px; padding: 10px 12px; }
 
 /* time picker wheels */
-.tp { display: flex; align-items: center; gap: 6px; }
-.tp select { width: auto; flex: 1; font: 600 22px var(--font-display); text-align: center; text-align-last: center; padding: 10px 6px; font-variant-numeric: tabular-nums; }
-.tp .colon { font: 700 24px var(--font-display); }
-.tp .unit { font-size: 13px; color: var(--muted); font-weight: 400; }
+.wheel { position: relative; display: flex; align-items: center; gap: 2px; background: var(--sunk); border: 1px solid var(--line); border-radius: 14px; padding: 0 10px; height: 134px; width: fit-content; max-width: 100%; }
+.wheel .band { position: absolute; left: 6px; right: 6px; top: 50%; height: 44px; transform: translateY(-50%); border-radius: 10px; background: var(--surface); border: 1px solid var(--line); pointer-events: none; }
+.wcol { position: relative; height: 132px; width: 62px; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); mask-image: linear-gradient(transparent, #000 32%, #000 68%, transparent); border-radius: 10px; touch-action: pan-y; }
+.wcol::-webkit-scrollbar { display: none; }
+.wcol:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.wcol .sp { height: 44px; }
+.wcol .it { height: 44px; line-height: 44px; text-align: center; scroll-snap-align: center; font: 600 24px var(--font-display); font-variant-numeric: tabular-nums; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.wcol .it.unset { color: var(--muted); }
+.wheel .wsep { position: relative; font: 700 24px var(--font-display); }
+.wheel .unit { position: relative; font-size: 13px; color: var(--muted); min-width: 2.4em; }
 
 /* arena */
 .pad {
@@ -173,11 +180,6 @@ input:focus-visible, select:focus-visible, button:focus-visible, .pad:focus-visi
 .slider.unset output { color: var(--muted); }
 .slider.unset input[type="range"] { opacity: 0.55; }
 
-.thumbs { display: flex; gap: 8px; flex-wrap: wrap; }
-.thumbs figure { margin: 0; position: relative; }
-.thumbs img { width: 84px; height: 140px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); display: block; }
-.thumbs button { position: absolute; top: 4px; right: 4px; border: none; border-radius: 999px; width: 26px; height: 26px; background: var(--fg); color: var(--bg); cursor: pointer; font-size: 15px; line-height: 1; }
-.drop { border: 2px dashed var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 
 .pad .stopbtn { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); z-index: 2; font: 600 14px var(--font-display); color: inherit; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
 .pad .count { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(16px + env(safe-area-inset-left, 0px)); }
@@ -235,9 +237,6 @@ td a { color: var(--accent); }
       <div class="grid2">
         <label class="field" for="p-id"><span data-t="idLabel"></span><small data-t="idHelp"></small><input id="p-id" class="idbox" maxlength="12" autocomplete="off" spellcheck="false"></label>
         <label class="field" for="p-age"><span data-t="ageLabel"></span><small data-t="ageHelp"></small><input id="p-age" type="number" inputmode="numeric" min="16" max="99"></label>
-        <label class="field" for="p-trials"><span data-t="trialsLabel"></span><small data-t="trialsHelp"></small>
-          <select id="p-trials"><option value="5">5 (≈ 30 s)</option><option value="10" selected>10 (≈ 1 min)</option><option value="15">15 (≈ 1.5 min)</option><option value="20">20 (≈ 2 min)</option></select>
-        </label>
       </div>
       <p class="err" id="s1-err" hidden></p>
       <button class="btn go wide" type="button" id="to-test" data-t="startTest"></button>
@@ -283,29 +282,21 @@ td a { color: var(--accent); }
       <div class="field">
         <label for="sl-score" data-t="scoreLabel"></label><small data-t="scoreHelp"></small>
         <div class="slider unset" id="score-wrap"><input id="sl-score" type="range" min="0" max="100" step="1" value="50"><output id="score-out" for="sl-score">–</output></div>
-        <div class="row"><button class="btn ghost small" type="button" id="score-clear" data-t="noScore" hidden></button></div>
       </div>
       <div class="grid2">
-        <div class="field" role="group" aria-labelledby="lbl-bed"><span id="lbl-bed" data-t="bedLabel"></span><div class="tp" id="tp-bed"></div></div>
-        <div class="field" role="group" aria-labelledby="lbl-wake"><span id="lbl-wake"><span data-t="wakeLabel"></span> <small data-t="required"></small></span><div class="tp" id="tp-wake"></div></div>
         <div class="field" role="group" aria-labelledby="lbl-total"><span id="lbl-total" data-t="totalLabel"></span><div class="tp" id="tp-total"></div></div>
-        <label class="field" for="sl-awake"><span data-t="awakeLabel"></span><input id="sl-awake" type="number" inputmode="numeric" min="0" max="50"></label>
+        <div class="field" role="group" aria-labelledby="lbl-bed"><span id="lbl-bed" data-t="bedLabel"></span><div class="tp" id="tp-bed"></div></div>
+        <div class="field" role="group" aria-labelledby="lbl-wake"><span id="lbl-wake" data-t="wakeLabel"></span><div class="tp" id="tp-wake"></div></div>
       </div>
       <div class="wrap" style="gap:10px">
-        <h2><span data-t="stagesTitle"></span> <small class="muted small" style="font-family:var(--font-body);font-weight:400" data-t="stagesHelp"></small></h2>
+        <h2 data-t="stagesTitle"></h2>
         <div class="grid2">
           <div class="field" role="group" aria-labelledby="lbl-deep"><span id="lbl-deep" data-t="deepLabel"></span><div class="tp" id="tp-deep"></div></div>
-          <div class="field" role="group" aria-labelledby="lbl-rem"><span id="lbl-rem" data-t="remLabel"></span><div class="tp" id="tp-rem"></div></div>
           <div class="field" role="group" aria-labelledby="lbl-light"><span id="lbl-light" data-t="lightLabel"></span><div class="tp" id="tp-light"></div></div>
+          <div class="field" role="group" aria-labelledby="lbl-rem"><span id="lbl-rem" data-t="remLabel"></span><div class="tp" id="tp-rem"></div></div>
+          <div class="field" role="group" aria-labelledby="lbl-awake"><span id="lbl-awake" data-t="awakeLabel"></span><div class="tp" id="tp-awake"></div></div>
         </div>
       </div>
-      <div class="drop" id="shot-box">
-        <b data-t="shotsTitle"></b>
-        <span class="small muted" data-t="shotsHelp"></span>
-        <input id="shot-input" type="file" accept="image/png,image/jpeg,image/webp" multiple>
-        <div class="thumbs" id="thumbs"></div>
-      </div>
-      <p class="note" id="shot-off" data-t="shotsOff" hidden></p>
       <div class="warnbox" id="warnbox" hidden role="alert">
         <b data-t="warnTitle"></b>
         <ul id="warnlist"></ul>
@@ -341,244 +332,554 @@ td a { color: var(--accent); }
 <script>
 (() => {
   // "READY?", "WAIT" and "TAP" stay English on purpose.
-  // Nature rates used for comparisons: hummingbird ~50 wingbeats/s, honeybee ~230 wingbeats/s,
-  // cheetah sprint ~29 m/s, speed of sound 343 m/s in air at 20 °C.
   const I18N = {
-    en: { _name: "English",
-      brandSub: "Sleep & cognition study", step1: "Check in", step2: "Reaction test", step3: "Sleep data", step4: "Done",
-      s1Title: "Good morning! Ready for today's round?", hudStreak: "day streak", hudBest: "best median", hudTotal: "mornings",
-      s1Intro: "Play within 30 minutes of waking up, before coffee, always on the same device. It's anonymous: you play under a random ID.",
-      idLabel: "Your player ID", idHelp: "Remembered on this device. On a new device, type your ID in here.",
-      ageLabel: "Age", ageHelp: "In years", agePh: "e.g. 24", trialsLabel: "Rounds", trialsHelp: "10 is recommended",
-      errId: "Your ID is missing. Type the ID you used before, or reload the page to get a new one.", errAge: "Enter your age as a number between 16 and 99.",
-      startTest: "Let's go", s2Title: "Reaction test",
-      s2Intro: "<b>Red</b> means wait. The moment it turns <b>green</b>, tap (or press <b>Space</b>) as fast as you can.",
-      padBegin: "Tap to start", padWaitMsg: "Wait for green…", tooEarly: "Too early!", tooEarlyMsg: "Wait for green. This round repeats.",
-      guessMsg: "That was a guess, not a reaction. This round repeats.", missed: "Missed", round: "Round", bestToday: "Best",
-      resultsTitle: "Your results", rankKicker: "Today's rank", chartTitle: "Every reaction", lgReaction: "Reaction", lgMedian: "Median", lgLapse: "Lapse zone (> 500 ms)",
-      newPb: "New personal best!", pbWas: "Personal best: {m} ms",
-      stMedian: "Median", stMean: "Mean", stFastest: "Fastest", stSlowest: "Slowest", stSd: "Std dev", stSpeed: "Speed", stLapses: "Lapses", stFalse: "False starts", stSlow10: "Slowest 10 %",
-      redo: "Play again", cont: "Continue",
-      s3Title: "Sleep data", s3Note: "Fill in what your sleep app shows. A screenshot of the sleep summary is enough on its own; we read the numbers later.",
-      scoreLabel: "Sleep score", scoreHelp: "Slide to the score your app shows (0–100). Leave it untouched if your app has no score.", noScore: "No score",
-      bedLabel: "Fell asleep / went to bed", wakeLabel: "Woke up", required: "(required)", totalLabel: "Total sleep", awakeLabel: "Times awake",
-      hh: "h", mm: "min",
-      shotsTitle: "Screenshot of the sleep summary", shotsHelp: "PNG or JPG, up to 4 images.",
-      shotsOff: "Screenshot upload isn't available on your view of this page. Send the screenshot to the study team instead and name it with your ID and today's date.",
-      removeShot: "Remove screenshot", errWake: "Set the time you woke up (hours and minutes).",
-      errType: "“{name}” isn't a PNG, JPG or WebP image.", errSize: "“{name}” is larger than 20 MB.",
-      save: "Save today's round", saving: "Saving…", savedTitle: "Saved. See you tomorrow!", savedText: "Today's round is in: {n} reactions, median {m} ms.",
-      nextHint: "Come back tomorrow morning to keep your streak going.",
-      notSavedTitle: "Not saved online", notSavedText: "The page couldn't reach the study database. Download your entry or copy it and send it to the study team, so today isn't lost.",
-      uploadFail: " One or more screenshots could not be uploaded; please send them to the study team.",
-      download: "Download my entry", copy: "Copy entry as text", downloaded: "Downloaded.", dlFail: "The download was cancelled or isn't available. Copy the entry instead.",
-      copied: "Copied. Paste it into a message to the study team.", copyFail: "Copying isn't allowed here. Download the entry instead.", newEntry: "New entry" },
-    de: { _name: "Deutsch",
-      brandSub: "Studie zu Schlaf & Kognition", step1: "Check-in", step2: "Reaktionstest", step3: "Schlafdaten", step4: "Fertig",
-      s1Title: "Guten Morgen! Bereit für die heutige Runde?", hudStreak: "Tage in Folge", hudBest: "bester Median", hudTotal: "Morgen",
-      s1Intro: "Spiel innerhalb von 30 Minuten nach dem Aufwachen, vor dem Kaffee und immer auf demselben Gerät. Alles anonym: Du spielst unter einer zufälligen ID.",
-      idLabel: "Deine Spieler-ID", idHelp: "Wird auf diesem Gerät gespeichert. Auf einem neuen Gerät gib hier deine ID ein.",
-      ageLabel: "Alter", ageHelp: "In Jahren", agePh: "z. B. 24", trialsLabel: "Runden", trialsHelp: "Empfohlen: 10",
-      errId: "Deine ID fehlt. Gib die ID ein, die du vorher benutzt hast, oder lade die Seite neu, um eine neue zu bekommen.", errAge: "Gib dein Alter als Zahl zwischen 16 und 99 ein.",
-      startTest: "Los geht's", s2Title: "Reaktionstest",
-      s2Intro: "<b>Rot</b> heißt warten. Sobald es <b>grün</b> wird, tippe so schnell wie möglich (oder drücke die <b>Leertaste</b>).",
-      padBegin: "Zum Starten tippen", padWaitMsg: "Warte auf Grün …", tooEarly: "Zu früh!", tooEarlyMsg: "Warte auf Grün. Die Runde wird wiederholt.",
-      guessMsg: "Das war geraten, keine Reaktion. Die Runde wird wiederholt.", missed: "Verpasst", round: "Runde", bestToday: "Beste",
-      resultsTitle: "Deine Ergebnisse", rankKicker: "Dein Rang heute", chartTitle: "Jede Reaktion", lgReaction: "Reaktion", lgMedian: "Median", lgLapse: "Aussetzer-Zone (> 500 ms)",
-      newPb: "Neue persönliche Bestleistung!", pbWas: "Bestleistung: {m} ms",
-      stMedian: "Median", stMean: "Mittelwert", stFastest: "Schnellste", stSlowest: "Langsamste", stSd: "Standardabw.", stSpeed: "Tempo", stLapses: "Aussetzer", stFalse: "Fehlstarts", stSlow10: "Langsamste 10 %",
-      redo: "Nochmal spielen", cont: "Weiter",
-      s3Title: "Schlafdaten", s3Note: "Trag ein, was deine Schlaf-App anzeigt. Ein Screenshot der Schlafübersicht reicht auch allein; die Werte lesen wir später aus.",
-      scoreLabel: "Schlafscore", scoreHelp: "Stell den Score ein, den deine App anzeigt (0–100). Lass den Regler unberührt, wenn deine App keinen Score hat.", noScore: "Kein Score",
-      bedLabel: "Eingeschlafen / ins Bett", wakeLabel: "Aufgewacht", required: "(Pflicht)", totalLabel: "Schlafdauer gesamt", awakeLabel: "Wie oft wach",
-      hh: "Std.", mm: "Min.",
-      shotsTitle: "Screenshot der Schlafübersicht", shotsHelp: "PNG oder JPG, bis zu 4 Bilder.",
-      shotsOff: "In deiner Ansicht dieser Seite kannst du keine Screenshots hochladen. Schick den Screenshot stattdessen ans Studienteam und benenne ihn mit deiner ID und dem heutigen Datum.",
-      removeShot: "Screenshot entfernen", errWake: "Stell ein, wann du aufgewacht bist (Stunden und Minuten).",
-      errType: "„{name}“ ist kein PNG-, JPG- oder WebP-Bild.", errSize: "„{name}“ ist größer als 20 MB.",
-      save: "Heutige Runde speichern", saving: "Wird gespeichert …", savedTitle: "Gespeichert. Bis morgen!", savedText: "Die heutige Runde ist drin: {n} Reaktionen, Median {m} ms.",
-      nextHint: "Komm morgen früh wieder, damit deine Serie weiterläuft.",
-      notSavedTitle: "Nicht online gespeichert", notSavedText: "Die Seite konnte die Studiendatenbank nicht erreichen. Lade deinen Eintrag herunter oder kopiere ihn und schick ihn ans Studienteam, damit der Tag nicht verloren geht.",
-      uploadFail: " Mindestens ein Screenshot konnte nicht hochgeladen werden; bitte schick ihn ans Studienteam.",
-      download: "Eintrag herunterladen", copy: "Eintrag als Text kopieren", downloaded: "Heruntergeladen.", dlFail: "Der Download wurde abgebrochen oder ist nicht verfügbar. Kopiere den Eintrag stattdessen.",
-      copied: "Kopiert. Füge ihn in eine Nachricht ans Studienteam ein.", copyFail: "Kopieren ist hier nicht erlaubt. Lade den Eintrag stattdessen herunter.", newEntry: "Neuer Eintrag" },
-    nl: { _name: "Nederlands (Vlaams)",
-      brandSub: "Studie over slaap & cognitie", step1: "Check-in", step2: "Reactietest", step3: "Slaapgegevens", step4: "Klaar",
-      s1Title: "Goeiemorgen! Klaar voor de ronde van vandaag?", hudStreak: "dagen op rij", hudBest: "beste mediaan", hudTotal: "ochtenden",
-      s1Intro: "Speel binnen 30 minuten na het ontwaken, vóór je koffie, altijd op hetzelfde toestel. Alles is anoniem: je speelt met een willekeurige ID.",
-      idLabel: "Jouw speler-ID", idHelp: "Wordt op dit toestel onthouden. Op een nieuw toestel typ je hier je ID in.",
-      ageLabel: "Leeftijd", ageHelp: "In jaren", agePh: "bv. 24", trialsLabel: "Rondes", trialsHelp: "10 is aanbevolen",
-      errId: "Je ID ontbreekt. Typ de ID die je eerder gebruikte, of herlaad de pagina voor een nieuwe.", errAge: "Vul je leeftijd in als getal tussen 16 en 99.",
-      startTest: "Aan de slag", s2Title: "Reactietest",
-      s2Intro: "<b>Rood</b> betekent wachten. Zodra het <b>groen</b> wordt, tik je zo snel mogelijk (of druk je op de <b>spatiebalk</b>).",
-      padBegin: "Tik om te starten", padWaitMsg: "Wacht op groen…", tooEarly: "Te vroeg!", tooEarlyMsg: "Wacht op groen. Deze ronde wordt herhaald.",
-      guessMsg: "Dat was gokken, geen reactie. Deze ronde wordt herhaald.", missed: "Gemist", round: "Ronde", bestToday: "Beste",
-      resultsTitle: "Jouw resultaten", rankKicker: "Jouw rang vandaag", chartTitle: "Elke reactie", lgReaction: "Reactie", lgMedian: "Mediaan", lgLapse: "Misser-zone (> 500 ms)",
-      newPb: "Nieuw persoonlijk record!", pbWas: "Persoonlijk record: {m} ms",
-      stMedian: "Mediaan", stMean: "Gemiddelde", stFastest: "Snelste", stSlowest: "Traagste", stSd: "Standaardafw.", stSpeed: "Snelheid", stLapses: "Missers", stFalse: "Valse starts", stSlow10: "Traagste 10 %",
-      redo: "Opnieuw spelen", cont: "Verder",
-      s3Title: "Slaapgegevens", s3Note: "Vul in wat je slaap-app toont. Een screenshot van het slaapoverzicht volstaat ook; de cijfers lezen we later zelf af.",
-      scoreLabel: "Slaapscore", scoreHelp: "Schuif naar de score die je app toont (0–100). Laat de schuifregelaar staan als je app geen score heeft.", noScore: "Geen score",
-      bedLabel: "In slaap gevallen / naar bed", wakeLabel: "Wakker geworden", required: "(verplicht)", totalLabel: "Totale slaap", awakeLabel: "Aantal keer wakker",
-      hh: "u", mm: "min",
-      shotsTitle: "Screenshot van het slaapoverzicht", shotsHelp: "PNG of JPG, tot 4 afbeeldingen.",
-      shotsOff: "Screenshots uploaden kan niet in jouw weergave van deze pagina. Stuur de screenshot naar het studieteam, met je ID en de datum van vandaag in de naam.",
-      removeShot: "Screenshot verwijderen", errWake: "Stel in hoe laat je wakker werd (uren en minuten).",
-      errType: "‘{name}’ is geen PNG-, JPG- of WebP-afbeelding.", errSize: "‘{name}’ is groter dan 20 MB.",
-      save: "Bewaar de ronde van vandaag", saving: "Bezig met bewaren…", savedTitle: "Bewaard. Tot morgen!", savedText: "De ronde van vandaag zit erin: {n} reacties, mediaan {m} ms.",
-      nextHint: "Kom morgenochtend terug om je reeks vol te houden.",
-      notSavedTitle: "Niet online bewaard", notSavedText: "De pagina kon de studiedatabank niet bereiken. Download je gegevens of kopieer ze en stuur ze naar het studieteam, zodat deze dag niet verloren gaat.",
-      uploadFail: " Een of meer screenshots konden niet geüpload worden; stuur ze naar het studieteam.",
-      download: "Download mijn gegevens", copy: "Kopieer als tekst", downloaded: "Gedownload.", dlFail: "Downloaden is geannuleerd of niet beschikbaar. Kopieer de gegevens in de plaats.",
-      copied: "Gekopieerd. Plak het in een bericht aan het studieteam.", copyFail: "Kopiëren is hier niet toegestaan. Download de gegevens in de plaats.", newEntry: "Nieuwe invoer" },
-    fr: { _name: "Français",
-      brandSub: "Étude sommeil & cognition", step1: "Check-in", step2: "Test de réaction", step3: "Sommeil", step4: "Terminé",
-      s1Title: "Bonjour ! Prêt pour la partie du jour ?", hudStreak: "jours d'affilée", hudBest: "meilleure médiane", hudTotal: "matins",
-      s1Intro: "Joue dans les 30 minutes qui suivent ton réveil, avant le café, toujours sur le même appareil. C'est anonyme : tu joues avec un identifiant aléatoire.",
-      idLabel: "Ton identifiant de joueur", idHelp: "Enregistré sur cet appareil. Sur un nouvel appareil, saisis ton identifiant ici.",
-      ageLabel: "Âge", ageHelp: "En années", agePh: "ex. 24", trialsLabel: "Manches", trialsHelp: "10 recommandé",
-      errId: "Ton identifiant manque. Saisis celui que tu utilisais avant, ou recharge la page pour en obtenir un nouveau.", errAge: "Indique ton âge en chiffres, entre 16 et 99.",
-      startTest: "C'est parti", s2Title: "Test de réaction",
-      s2Intro: "<b>Rouge</b> : attends. Dès que ça devient <b>vert</b>, touche l'écran (ou appuie sur la <b>barre d'espace</b>) le plus vite possible.",
-      padBegin: "Touche pour commencer", padWaitMsg: "Attends le vert…", tooEarly: "Trop tôt !", tooEarlyMsg: "Attends le vert. Cette manche est répétée.",
-      guessMsg: "C'était deviné, pas une réaction. Cette manche est répétée.", missed: "Raté", round: "Manche", bestToday: "Meilleur",
-      resultsTitle: "Tes résultats", rankKicker: "Ton rang du jour", chartTitle: "Chaque réaction", lgReaction: "Réaction", lgMedian: "Médiane", lgLapse: "Zone d'absence (> 500 ms)",
-      newPb: "Nouveau record personnel !", pbWas: "Record personnel : {m} ms",
-      stMedian: "Médiane", stMean: "Moyenne", stFastest: "Plus rapide", stSlowest: "Plus lent", stSd: "Écart-type", stSpeed: "Vitesse", stLapses: "Absences", stFalse: "Faux départs", stSlow10: "10 % plus lents",
-      redo: "Rejouer", cont: "Continuer",
-      s3Title: "Données de sommeil", s3Note: "Indique ce que montre ton appli de sommeil. Une capture d'écran du résumé suffit à elle seule ; nous lirons les valeurs plus tard.",
-      scoreLabel: "Score de sommeil", scoreHelp: "Règle le curseur sur le score de ton appli (0–100). N'y touche pas si ton appli n'a pas de score.", noScore: "Pas de score",
-      bedLabel: "Endormi / couché à", wakeLabel: "Réveillé à", required: "(obligatoire)", totalLabel: "Sommeil total", awakeLabel: "Nombre de réveils",
-      hh: "h", mm: "min",
-      shotsTitle: "Capture d'écran du résumé de sommeil", shotsHelp: "PNG ou JPG, jusqu'à 4 images.",
-      shotsOff: "L'envoi de captures n'est pas disponible dans ta vue de cette page. Envoie plutôt la capture à l'équipe de l'étude, nommée avec ton identifiant et la date du jour.",
-      removeShot: "Supprimer la capture", errWake: "Règle l'heure de ton réveil (heures et minutes).",
-      errType: "« {name} » n'est pas une image PNG, JPG ou WebP.", errSize: "« {name} » dépasse 20 Mo.",
-      save: "Enregistrer la partie du jour", saving: "Enregistrement…", savedTitle: "Enregistré. À demain !", savedText: "La partie du jour est enregistrée : {n} réactions, médiane {m} ms.",
-      nextHint: "Reviens demain matin pour garder ta série.",
-      notSavedTitle: "Pas enregistré en ligne", notSavedText: "La page n'a pas pu joindre la base de données de l'étude. Télécharge ta saisie ou copie-la et envoie-la à l'équipe, pour ne pas perdre cette journée.",
-      uploadFail: " Une ou plusieurs captures n'ont pas pu être envoyées ; envoie-les à l'équipe de l'étude.",
-      download: "Télécharger ma saisie", copy: "Copier en texte", downloaded: "Téléchargé.", dlFail: "Téléchargement annulé ou indisponible. Copie plutôt la saisie.",
-      copied: "Copié. Colle-le dans un message à l'équipe de l'étude.", copyFail: "La copie n'est pas autorisée ici. Télécharge plutôt la saisie.", newEntry: "Nouvelle saisie" },
-    es: { _name: "Español",
-      brandSub: "Estudio de sueño y cognición", step1: "Registro", step2: "Prueba de reacción", step3: "Datos de sueño", step4: "Listo",
-      s1Title: "¡Buenos días! ¿Listo para la ronda de hoy?", hudStreak: "días seguidos", hudBest: "mejor mediana", hudTotal: "mañanas",
-      s1Intro: "Juega en los 30 minutos siguientes a despertarte, antes del café y siempre en el mismo dispositivo. Es anónimo: juegas con un ID aleatorio.",
-      idLabel: "Tu ID de jugador", idHelp: "Se guarda en este dispositivo. En un dispositivo nuevo, escribe aquí tu ID.",
-      ageLabel: "Edad", ageHelp: "En años", agePh: "p. ej. 24", trialsLabel: "Rondas", trialsHelp: "Se recomiendan 10",
-      errId: "Falta tu ID. Escribe el que usaste antes o recarga la página para obtener uno nuevo.", errAge: "Introduce tu edad como un número entre 16 y 99.",
-      startTest: "¡Vamos!", s2Title: "Prueba de reacción",
-      s2Intro: "<b>Rojo</b> significa esperar. En cuanto se ponga <b>verde</b>, toca (o pulsa la <b>barra espaciadora</b>) lo más rápido que puedas.",
-      padBegin: "Toca para empezar", padWaitMsg: "Espera al verde…", tooEarly: "¡Demasiado pronto!", tooEarlyMsg: "Espera al verde. Esta ronda se repite.",
-      guessMsg: "Eso fue adivinar, no reaccionar. Esta ronda se repite.", missed: "Fallada", round: "Ronda", bestToday: "Mejor",
-      resultsTitle: "Tus resultados", rankKicker: "Tu rango de hoy", chartTitle: "Cada reacción", lgReaction: "Reacción", lgMedian: "Mediana", lgLapse: "Zona de lapsus (> 500 ms)",
-      newPb: "¡Nuevo récord personal!", pbWas: "Récord personal: {m} ms",
-      stMedian: "Mediana", stMean: "Media", stFastest: "Más rápida", stSlowest: "Más lenta", stSd: "Desv. estándar", stSpeed: "Velocidad", stLapses: "Lapsus", stFalse: "Salidas en falso", stSlow10: "10 % más lentas",
-      redo: "Jugar otra vez", cont: "Continuar",
-      s3Title: "Datos de sueño", s3Note: "Rellena lo que muestra tu app de sueño. Una captura del resumen de sueño basta por sí sola; leeremos los valores después.",
-      scoreLabel: "Puntuación de sueño", scoreHelp: "Desliza hasta la puntuación que muestra tu app (0–100). No lo toques si tu app no da puntuación.", noScore: "Sin puntuación",
-      bedLabel: "Me dormí / me acosté", wakeLabel: "Me desperté", required: "(obligatorio)", totalLabel: "Sueño total", awakeLabel: "Veces despierto",
-      hh: "h", mm: "min",
-      shotsTitle: "Captura del resumen de sueño", shotsHelp: "PNG o JPG, hasta 4 imágenes.",
-      shotsOff: "En tu vista de esta página no se pueden subir capturas. Envía la captura al equipo del estudio, con tu ID y la fecha de hoy en el nombre.",
-      removeShot: "Quitar captura", errWake: "Ajusta la hora a la que te despertaste (horas y minutos).",
-      errType: "«{name}» no es una imagen PNG, JPG o WebP.", errSize: "«{name}» pesa más de 20 MB.",
-      save: "Guardar la ronda de hoy", saving: "Guardando…", savedTitle: "Guardado. ¡Hasta mañana!", savedText: "La ronda de hoy está guardada: {n} reacciones, mediana {m} ms.",
-      nextHint: "Vuelve mañana por la mañana para mantener tu racha.",
-      notSavedTitle: "No se guardó en línea", notSavedText: "La página no pudo conectar con la base de datos del estudio. Descarga tu registro o cópialo y envíalo al equipo para que no se pierda este día.",
-      uploadFail: " No se pudieron subir una o más capturas; envíalas al equipo del estudio.",
-      download: "Descargar mi registro", copy: "Copiar como texto", downloaded: "Descargado.", dlFail: "La descarga se canceló o no está disponible. Copia el registro en su lugar.",
-      copied: "Copiado. Pégalo en un mensaje al equipo del estudio.", copyFail: "Aquí no se permite copiar. Descarga el registro en su lugar.", newEntry: "Nuevo registro" },
-    ca: { _name: "Català",
-      brandSub: "Estudi de son i cognició", step1: "Registre", step2: "Prova de reacció", step3: "Dades de son", step4: "Fet",
-      s1Title: "Bon dia! A punt per a la ronda d'avui?", hudStreak: "dies seguits", hudBest: "millor mediana", hudTotal: "matins",
-      s1Intro: "Juga durant els 30 minuts després de despertar-te, abans del cafè i sempre amb el mateix dispositiu. És anònim: jugues amb un ID aleatori.",
-      idLabel: "El teu ID de jugador", idHelp: "Es desa en aquest dispositiu. En un dispositiu nou, escriu-hi el teu ID.",
-      ageLabel: "Edat", ageHelp: "En anys", agePh: "p. ex. 24", trialsLabel: "Rondes", trialsHelp: "Se'n recomanen 10",
-      errId: "Falta el teu ID. Escriu el que feies servir abans o torna a carregar la pàgina per obtenir-ne un de nou.", errAge: "Introdueix la teva edat com un nombre entre 16 i 99.",
-      startTest: "Som-hi!", s2Title: "Prova de reacció",
-      s2Intro: "<b>Vermell</b> vol dir esperar. Quan es posi <b>verd</b>, toca (o prem la <b>barra d'espai</b>) tan ràpid com puguis.",
-      padBegin: "Toca per començar", padWaitMsg: "Espera el verd…", tooEarly: "Massa aviat!", tooEarlyMsg: "Espera el verd. Aquesta ronda es repeteix.",
-      guessMsg: "Això ha estat endevinar, no reaccionar. Aquesta ronda es repeteix.", missed: "Fallada", round: "Ronda", bestToday: "Millor",
-      resultsTitle: "Els teus resultats", rankKicker: "El teu rang d'avui", chartTitle: "Cada reacció", lgReaction: "Reacció", lgMedian: "Mediana", lgLapse: "Zona de lapsus (> 500 ms)",
-      newPb: "Nou rècord personal!", pbWas: "Rècord personal: {m} ms",
-      stMedian: "Mediana", stMean: "Mitjana", stFastest: "Més ràpida", stSlowest: "Més lenta", stSd: "Desv. estàndard", stSpeed: "Velocitat", stLapses: "Lapsus", stFalse: "Sortides en fals", stSlow10: "10 % més lentes",
-      redo: "Tornar a jugar", cont: "Continuar",
-      s3Title: "Dades de son", s3Note: "Omple el que mostra la teva app de son. Una captura del resum de son ja n'hi ha prou; llegirem els valors més endavant.",
-      scoreLabel: "Puntuació de son", scoreHelp: "Llisca fins a la puntuació que mostra la teva app (0–100). No el toquis si la teva app no en dona.", noScore: "Sense puntuació",
-      bedLabel: "M'he adormit / me n'he anat al llit", wakeLabel: "M'he despertat", required: "(obligatori)", totalLabel: "Son total", awakeLabel: "Vegades despert",
-      hh: "h", mm: "min",
-      shotsTitle: "Captura del resum de son", shotsHelp: "PNG o JPG, fins a 4 imatges.",
-      shotsOff: "En la teva vista d'aquesta pàgina no es poden pujar captures. Envia la captura a l'equip de l'estudi, amb el teu ID i la data d'avui al nom.",
-      removeShot: "Treure la captura", errWake: "Ajusta l'hora a què et vas despertar (hores i minuts).",
-      errType: "«{name}» no és una imatge PNG, JPG o WebP.", errSize: "«{name}» supera els 20 MB.",
-      save: "Desar la ronda d'avui", saving: "S'està desant…", savedTitle: "Desat. Fins demà!", savedText: "La ronda d'avui s'ha desat: {n} reaccions, mediana {m} ms.",
-      nextHint: "Torna demà al matí per mantenir la ratxa.",
-      notSavedTitle: "No s'ha desat en línia", notSavedText: "La pàgina no s'ha pogut connectar amb la base de dades de l'estudi. Descarrega el teu registre o copia'l i envia'l a l'equip perquè no es perdi aquest dia.",
-      uploadFail: " No s'han pogut pujar una o més captures; envia-les a l'equip de l'estudi.",
-      download: "Descarregar el meu registre", copy: "Copiar com a text", downloaded: "Descarregat.", dlFail: "La descàrrega s'ha cancel·lat o no està disponible. Copia el registre.",
-      copied: "Copiat. Enganxa'l en un missatge a l'equip de l'estudi.", copyFail: "Aquí no es pot copiar. Descarrega el registre.", newEntry: "Nou registre" }
+    "en": {
+      "_name": "English",
+      "brandSub": "Sleep & cognition study",
+      "step1": "Check in",
+      "step2": "Reaction test",
+      "step3": "Sleep data",
+      "step4": "Done",
+      "s1Title": "Good morning! Ready for today's round?",
+      "s1Intro": "Start the round shortly after waking up, before coffee and always on the same device. It's anonymous: you play under a random ID.",
+      "idLabel": "Your player ID",
+      "idHelp": "Remembered on this device. On a new device, type your ID in here.",
+      "ageLabel": "Age",
+      "ageHelp": "In years",
+      "agePh": "e.g. 24",
+      "errId": "Your ID is missing. Type the ID you used before, or reload the page to get a new one.",
+      "errAge": "Enter your age as a number between 16 and 99.",
+      "startTest": "Let's go",
+      "s2Title": "Reaction test",
+      "s2Intro": "<b>Red</b> means wait. The moment it turns <b>green</b>, tap (or press <b>Space</b>) as fast as you can.",
+      "padBegin": "Tap to start",
+      "padWaitMsg": "Wait for green…",
+      "tooEarly": "Too early!",
+      "tooEarlyMsg": "Wait for green. This round repeats.",
+      "guessMsg": "That was a guess, not a reaction. This round repeats.",
+      "missed": "Missed",
+      "round": "Round",
+      "resultsTitle": "Your results",
+      "chartTitle": "Every reaction",
+      "lgReaction": "Reaction",
+      "lgMedian": "Median",
+      "lgLapse": "Lapse zone (> 500 ms)",
+      "newPb": "New personal best!",
+      "pbWas": "Personal best: {m} ms",
+      "stMedian": "Median",
+      "stMean": "Mean",
+      "stFastest": "Fastest",
+      "stSlowest": "Slowest",
+      "stSd": "Std dev",
+      "stSpeed": "Speed",
+      "stLapses": "Lapses",
+      "stFalse": "False starts",
+      "stSlow10": "Slowest 10 %",
+      "redo": "Play again",
+      "cont": "Continue",
+      "s3Title": "Sleep data",
+      "s3Note": "Enter what your watch or sleep app shows.",
+      "scoreLabel": "Sleep score",
+      "scoreHelp": "Slide to the score your app shows (0–100).",
+      "bedLabel": "Fell asleep",
+      "wakeLabel": "Woke up",
+      "totalLabel": "Total sleep",
+      "awakeLabel": "Awake time",
+      "hh": "h",
+      "mm": "min",
+      "save": "Save today's round",
+      "saving": "Saving…",
+      "savedTitle": "Saved. See you tomorrow!",
+      "savedText": "Today's round is in: {n} reactions, median {m} ms.",
+      "notSavedTitle": "Not saved online",
+      "notSavedText": "The page couldn't reach the study database. Download your entry or copy it and send it to the study team, so today isn't lost.",
+      "download": "Download my entry",
+      "copy": "Copy entry as text",
+      "downloaded": "Downloaded.",
+      "dlFail": "The download was cancelled or isn't available. Copy the entry instead.",
+      "copied": "Copied. Paste it into a message to the study team.",
+      "copyFail": "Copying isn't allowed here. Download the entry instead.",
+      "newEntry": "New entry",
+      "stagesTitle": "Sleep stages",
+      "deepLabel": "Deep sleep",
+      "remLabel": "REM sleep",
+      "lightLabel": "Light sleep",
+      "practice": "Practice",
+      "practiceMsg": "Practice round, it doesn't count yet",
+      "nowCounts": "Practice done. Now it counts!",
+      "stop": "Stop",
+      "disturbedLabel": "Something disturbed the test",
+      "disturbedHelp": "Tick this if something distracted you during the test, for example a notification, a conversation, a noise or an accidental tap. Your times are still saved, just marked. An honest tick helps the study more than a good-looking result.",
+      "histTitle": "Your recent mornings (median)",
+      "pbFirst": "First record set: {m} ms",
+      "warnTitle": "Please check these values",
+      "warnTotalBed": "Your total sleep ({a}) is longer than the time between falling asleep and waking up ({b}).",
+      "warnStages": "Deep, REM and light sleep add up to {a}, more than your total sleep ({b}).",
+      "warnWindow": "From falling asleep to waking up is {b}. Please check the times (24-hour clock).",
+      "warnWakeLate": "Your wake-up time is {a} before the test. Did you set today's wake-up time?",
+      "fixBtn": "Let me fix it",
+      "saveAnyway": "Values are correct, save",
+      "hoursAria": "Hours",
+      "minutesAria": "Minutes",
+      "errMissing": "Please fill in: {list}."
+    },
+    "de": {
+      "_name": "Deutsch",
+      "brandSub": "Studie zu Schlaf & Kognition",
+      "step1": "Check-in",
+      "step2": "Reaktionstest",
+      "step3": "Schlafdaten",
+      "step4": "Fertig",
+      "s1Title": "Guten Morgen! Bereit für die heutige Runde?",
+      "s1Intro": "Starte die Runde kurz nach dem Aufwachen, vor dem Kaffee und immer auf demselben Gerät. Alles anonym: Du spielst unter einer zufälligen ID.",
+      "idLabel": "Deine Spieler-ID",
+      "idHelp": "Wird auf diesem Gerät gespeichert. Auf einem neuen Gerät gib hier deine ID ein.",
+      "ageLabel": "Alter",
+      "ageHelp": "In Jahren",
+      "agePh": "z. B. 24",
+      "errId": "Deine ID fehlt. Gib die ID ein, die du vorher benutzt hast, oder lade die Seite neu, um eine neue zu bekommen.",
+      "errAge": "Gib dein Alter als Zahl zwischen 16 und 99 ein.",
+      "startTest": "Los geht's",
+      "s2Title": "Reaktionstest",
+      "s2Intro": "<b>Rot</b> heißt warten. Sobald es <b>grün</b> wird, tippe so schnell wie möglich (oder drücke die <b>Leertaste</b>).",
+      "padBegin": "Zum Starten tippen",
+      "padWaitMsg": "Warte auf Grün …",
+      "tooEarly": "Zu früh!",
+      "tooEarlyMsg": "Warte auf Grün. Die Runde wird wiederholt.",
+      "guessMsg": "Das war geraten, keine Reaktion. Die Runde wird wiederholt.",
+      "missed": "Verpasst",
+      "round": "Runde",
+      "resultsTitle": "Deine Ergebnisse",
+      "chartTitle": "Jede Reaktion",
+      "lgReaction": "Reaktion",
+      "lgMedian": "Median",
+      "lgLapse": "Aussetzer-Zone (> 500 ms)",
+      "newPb": "Neue persönliche Bestleistung!",
+      "pbWas": "Bestleistung: {m} ms",
+      "stMedian": "Median",
+      "stMean": "Mittelwert",
+      "stFastest": "Schnellste",
+      "stSlowest": "Langsamste",
+      "stSd": "Standardabw.",
+      "stSpeed": "Tempo",
+      "stLapses": "Aussetzer",
+      "stFalse": "Fehlstarts",
+      "stSlow10": "Langsamste 10 %",
+      "redo": "Nochmal spielen",
+      "cont": "Weiter",
+      "s3Title": "Schlafdaten",
+      "s3Note": "Trag ein, was deine Uhr oder deine Schlaf-App anzeigt.",
+      "scoreLabel": "Schlafscore",
+      "scoreHelp": "Stell den Score ein, den deine App anzeigt (0–100).",
+      "bedLabel": "Eingeschlafen",
+      "wakeLabel": "Aufgewacht",
+      "totalLabel": "Schlafdauer gesamt",
+      "awakeLabel": "Wachzeit",
+      "hh": "Std.",
+      "mm": "Min.",
+      "save": "Heutige Runde speichern",
+      "saving": "Wird gespeichert …",
+      "savedTitle": "Gespeichert. Bis morgen!",
+      "savedText": "Die heutige Runde ist drin: {n} Reaktionen, Median {m} ms.",
+      "notSavedTitle": "Nicht online gespeichert",
+      "notSavedText": "Die Seite konnte die Studiendatenbank nicht erreichen. Lade deinen Eintrag herunter oder kopiere ihn und schick ihn ans Studienteam, damit der Tag nicht verloren geht.",
+      "download": "Eintrag herunterladen",
+      "copy": "Eintrag als Text kopieren",
+      "downloaded": "Heruntergeladen.",
+      "dlFail": "Der Download wurde abgebrochen oder ist nicht verfügbar. Kopiere den Eintrag stattdessen.",
+      "copied": "Kopiert. Füge ihn in eine Nachricht ans Studienteam ein.",
+      "copyFail": "Kopieren ist hier nicht erlaubt. Lade den Eintrag stattdessen herunter.",
+      "newEntry": "Neuer Eintrag",
+      "stagesTitle": "Schlafphasen",
+      "deepLabel": "Tiefschlaf",
+      "remLabel": "REM-Schlaf",
+      "lightLabel": "Leichtschlaf",
+      "practice": "Übung",
+      "practiceMsg": "Übungsrunde, zählt noch nicht",
+      "nowCounts": "Übung vorbei. Jetzt zählt's!",
+      "stop": "Abbrechen",
+      "disturbedLabel": "Beim Test war ich abgelenkt",
+      "disturbedHelp": "Setz das Häkchen, wenn dich während des Tests etwas abgelenkt hat, z. B. eine Benachrichtigung, ein Gespräch, ein Geräusch oder ein versehentlicher Tipp. Deine Zeiten werden trotzdem gespeichert, nur markiert. Ein ehrliches Häkchen hilft der Studie mehr als ein schönes Ergebnis.",
+      "histTitle": "Deine letzten Morgen (Median)",
+      "pbFirst": "Erste Bestzeit gesetzt: {m} ms",
+      "warnTitle": "Bitte prüf diese Werte",
+      "warnTotalBed": "Deine Schlafdauer ({a}) ist länger als die Zeit zwischen Einschlafen und Aufwachen ({b}).",
+      "warnStages": "Tief-, REM- und Leichtschlaf ergeben zusammen {a}, mehr als deine Schlafdauer ({b}).",
+      "warnWindow": "Vom Einschlafen bis zum Aufwachen sind es {b}. Bitte prüf die Uhrzeiten (24-Stunden-Format).",
+      "warnWakeLate": "Deine Aufwachzeit liegt {a} vor dem Test. Hast du die heutige Aufwachzeit eingestellt?",
+      "fixBtn": "Ich korrigiere es",
+      "saveAnyway": "Werte stimmen, speichern",
+      "hoursAria": "Stunden",
+      "minutesAria": "Minuten",
+      "errMissing": "Bitte noch ausfüllen: {list}."
+    },
+    "nl": {
+      "_name": "Nederlands (Vlaams)",
+      "brandSub": "Studie over slaap & cognitie",
+      "step1": "Check-in",
+      "step2": "Reactietest",
+      "step3": "Slaapgegevens",
+      "step4": "Klaar",
+      "s1Title": "Goeiemorgen! Klaar voor de ronde van vandaag?",
+      "s1Intro": "Start de ronde kort na het ontwaken, vóór je koffie en altijd op hetzelfde toestel. Alles is anoniem: je speelt met een willekeurige ID.",
+      "idLabel": "Jouw speler-ID",
+      "idHelp": "Wordt op dit toestel onthouden. Op een nieuw toestel typ je hier je ID in.",
+      "ageLabel": "Leeftijd",
+      "ageHelp": "In jaren",
+      "agePh": "bv. 24",
+      "errId": "Je ID ontbreekt. Typ de ID die je eerder gebruikte, of herlaad de pagina voor een nieuwe.",
+      "errAge": "Vul je leeftijd in als getal tussen 16 en 99.",
+      "startTest": "Aan de slag",
+      "s2Title": "Reactietest",
+      "s2Intro": "<b>Rood</b> betekent wachten. Zodra het <b>groen</b> wordt, tik je zo snel mogelijk (of druk je op de <b>spatiebalk</b>).",
+      "padBegin": "Tik om te starten",
+      "padWaitMsg": "Wacht op groen…",
+      "tooEarly": "Te vroeg!",
+      "tooEarlyMsg": "Wacht op groen. Deze ronde wordt herhaald.",
+      "guessMsg": "Dat was gokken, geen reactie. Deze ronde wordt herhaald.",
+      "missed": "Gemist",
+      "round": "Ronde",
+      "resultsTitle": "Jouw resultaten",
+      "chartTitle": "Elke reactie",
+      "lgReaction": "Reactie",
+      "lgMedian": "Mediaan",
+      "lgLapse": "Misser-zone (> 500 ms)",
+      "newPb": "Nieuw persoonlijk record!",
+      "pbWas": "Persoonlijk record: {m} ms",
+      "stMedian": "Mediaan",
+      "stMean": "Gemiddelde",
+      "stFastest": "Snelste",
+      "stSlowest": "Traagste",
+      "stSd": "Standaardafw.",
+      "stSpeed": "Snelheid",
+      "stLapses": "Missers",
+      "stFalse": "Valse starts",
+      "stSlow10": "Traagste 10 %",
+      "redo": "Opnieuw spelen",
+      "cont": "Verder",
+      "s3Title": "Slaapgegevens",
+      "s3Note": "Vul in wat je horloge of slaap-app toont.",
+      "scoreLabel": "Slaapscore",
+      "scoreHelp": "Schuif naar de score die je app toont (0–100).",
+      "bedLabel": "In slaap gevallen",
+      "wakeLabel": "Wakker geworden",
+      "totalLabel": "Totale slaap",
+      "awakeLabel": "Tijd wakker",
+      "hh": "u",
+      "mm": "min",
+      "save": "Bewaar de ronde van vandaag",
+      "saving": "Bezig met bewaren…",
+      "savedTitle": "Bewaard. Tot morgen!",
+      "savedText": "De ronde van vandaag zit erin: {n} reacties, mediaan {m} ms.",
+      "notSavedTitle": "Niet online bewaard",
+      "notSavedText": "De pagina kon de studiedatabank niet bereiken. Download je gegevens of kopieer ze en stuur ze naar het studieteam, zodat deze dag niet verloren gaat.",
+      "download": "Download mijn gegevens",
+      "copy": "Kopieer als tekst",
+      "downloaded": "Gedownload.",
+      "dlFail": "Downloaden is geannuleerd of niet beschikbaar. Kopieer de gegevens in de plaats.",
+      "copied": "Gekopieerd. Plak het in een bericht aan het studieteam.",
+      "copyFail": "Kopiëren is hier niet toegestaan. Download de gegevens in de plaats.",
+      "newEntry": "Nieuwe invoer",
+      "stagesTitle": "Slaapfasen",
+      "deepLabel": "Diepe slaap",
+      "remLabel": "REM-slaap",
+      "lightLabel": "Lichte slaap",
+      "practice": "Oefening",
+      "practiceMsg": "Oefenronde, telt nog niet mee",
+      "nowCounts": "Oefenen gedaan. Nu telt het!",
+      "stop": "Stoppen",
+      "disturbedLabel": "Ik werd gestoord tijdens de test",
+      "disturbedHelp": "Vink dit aan als iets je afleidde tijdens de test, bijvoorbeeld een melding, iemand die tegen je praatte, een geluid of een tik per ongeluk. Je tijden worden toch bewaard, alleen gemarkeerd. Een eerlijk vinkje helpt de studie meer dan een mooi resultaat.",
+      "histTitle": "Jouw laatste ochtenden (mediaan)",
+      "pbFirst": "Eerste record gezet: {m} ms",
+      "warnTitle": "Controleer deze waarden",
+      "warnTotalBed": "Je totale slaap ({a}) is langer dan de tijd tussen inslapen en wakker worden ({b}).",
+      "warnStages": "Diepe, REM- en lichte slaap samen zijn {a}, meer dan je totale slaap ({b}).",
+      "warnWindow": "Van inslapen tot wakker worden is {b}. Controleer de uren (24-uursnotatie).",
+      "warnWakeLate": "Je wektijd ligt {a} vóór de test. Heb je de wektijd van vandaag ingesteld?",
+      "fixBtn": "Ik pas het aan",
+      "saveAnyway": "Waarden kloppen, bewaren",
+      "hoursAria": "Uren",
+      "minutesAria": "Minuten",
+      "errMissing": "Vul nog in: {list}."
+    },
+    "fr": {
+      "_name": "Français",
+      "brandSub": "Étude sommeil & cognition",
+      "step1": "Check-in",
+      "step2": "Test de réaction",
+      "step3": "Sommeil",
+      "step4": "Terminé",
+      "s1Title": "Bonjour ! Prêt pour la partie du jour ?",
+      "s1Intro": "Lance la partie peu après ton réveil, avant le café et toujours sur le même appareil. C'est anonyme : tu joues avec un identifiant aléatoire.",
+      "idLabel": "Ton identifiant de joueur",
+      "idHelp": "Enregistré sur cet appareil. Sur un nouvel appareil, saisis ton identifiant ici.",
+      "ageLabel": "Âge",
+      "ageHelp": "En années",
+      "agePh": "ex. 24",
+      "errId": "Ton identifiant manque. Saisis celui que tu utilisais avant, ou recharge la page pour en obtenir un nouveau.",
+      "errAge": "Indique ton âge en chiffres, entre 16 et 99.",
+      "startTest": "C'est parti",
+      "s2Title": "Test de réaction",
+      "s2Intro": "<b>Rouge</b> : attends. Dès que ça devient <b>vert</b>, touche l'écran (ou appuie sur la <b>barre d'espace</b>) le plus vite possible.",
+      "padBegin": "Touche pour commencer",
+      "padWaitMsg": "Attends le vert…",
+      "tooEarly": "Trop tôt !",
+      "tooEarlyMsg": "Attends le vert. Cette manche est répétée.",
+      "guessMsg": "C'était deviné, pas une réaction. Cette manche est répétée.",
+      "missed": "Raté",
+      "round": "Manche",
+      "resultsTitle": "Tes résultats",
+      "chartTitle": "Chaque réaction",
+      "lgReaction": "Réaction",
+      "lgMedian": "Médiane",
+      "lgLapse": "Zone d'absence (> 500 ms)",
+      "newPb": "Nouveau record personnel !",
+      "pbWas": "Record personnel : {m} ms",
+      "stMedian": "Médiane",
+      "stMean": "Moyenne",
+      "stFastest": "Plus rapide",
+      "stSlowest": "Plus lent",
+      "stSd": "Écart-type",
+      "stSpeed": "Vitesse",
+      "stLapses": "Absences",
+      "stFalse": "Faux départs",
+      "stSlow10": "10 % plus lents",
+      "redo": "Rejouer",
+      "cont": "Continuer",
+      "s3Title": "Données de sommeil",
+      "s3Note": "Indique ce qu'affiche ta montre ou ton appli de sommeil.",
+      "scoreLabel": "Score de sommeil",
+      "scoreHelp": "Règle le curseur sur le score de ton appli (0–100).",
+      "bedLabel": "Endormi à",
+      "wakeLabel": "Réveillé à",
+      "totalLabel": "Sommeil total",
+      "awakeLabel": "Temps éveillé",
+      "hh": "h",
+      "mm": "min",
+      "save": "Enregistrer la partie du jour",
+      "saving": "Enregistrement…",
+      "savedTitle": "Enregistré. À demain !",
+      "savedText": "La partie du jour est enregistrée : {n} réactions, médiane {m} ms.",
+      "notSavedTitle": "Pas enregistré en ligne",
+      "notSavedText": "La page n'a pas pu joindre la base de données de l'étude. Télécharge ta saisie ou copie-la et envoie-la à l'équipe, pour ne pas perdre cette journée.",
+      "download": "Télécharger ma saisie",
+      "copy": "Copier en texte",
+      "downloaded": "Téléchargé.",
+      "dlFail": "Téléchargement annulé ou indisponible. Copie plutôt la saisie.",
+      "copied": "Copié. Colle-le dans un message à l'équipe de l'étude.",
+      "copyFail": "La copie n'est pas autorisée ici. Télécharge plutôt la saisie.",
+      "newEntry": "Nouvelle saisie",
+      "stagesTitle": "Phases de sommeil",
+      "deepLabel": "Sommeil profond",
+      "remLabel": "Sommeil paradoxal (REM)",
+      "lightLabel": "Sommeil léger",
+      "practice": "Essai",
+      "practiceMsg": "Manche d'essai, elle ne compte pas encore",
+      "nowCounts": "Essai terminé. Maintenant, ça compte !",
+      "stop": "Arrêter",
+      "disturbedLabel": "J'ai été dérangé pendant le test",
+      "disturbedHelp": "Coche cette case si quelque chose t'a distrait pendant le test, par exemple une notification, quelqu'un qui t'a parlé, un bruit ou une touche accidentelle. Tes temps sont quand même enregistrés, simplement marqués. Une coche honnête aide plus l'étude qu'un beau résultat.",
+      "histTitle": "Tes derniers matins (médiane)",
+      "pbFirst": "Premier record établi : {m} ms",
+      "warnTitle": "Vérifie ces valeurs",
+      "warnTotalBed": "Ton sommeil total ({a}) est plus long que le temps entre l'endormissement et le réveil ({b}).",
+      "warnStages": "Sommeil profond, paradoxal et léger font ensemble {a}, plus que ton sommeil total ({b}).",
+      "warnWindow": "De l'endormissement au réveil, il y a {b}. Vérifie les heures (format 24 h).",
+      "warnWakeLate": "Ton heure de réveil est {a} avant le test. As-tu réglé l'heure de réveil d'aujourd'hui ?",
+      "fixBtn": "Je corrige",
+      "saveAnyway": "Les valeurs sont justes, enregistrer",
+      "hoursAria": "Heures",
+      "minutesAria": "Minutes",
+      "errMissing": "Merci de remplir encore : {list}."
+    },
+    "es": {
+      "_name": "Español",
+      "brandSub": "Estudio de sueño y cognición",
+      "step1": "Registro",
+      "step2": "Prueba de reacción",
+      "step3": "Datos de sueño",
+      "step4": "Listo",
+      "s1Title": "¡Buenos días! ¿Listo para la ronda de hoy?",
+      "s1Intro": "Empieza la ronda poco después de despertarte, antes del café y siempre en el mismo dispositivo. Es anónimo: juegas con un ID aleatorio.",
+      "idLabel": "Tu ID de jugador",
+      "idHelp": "Se guarda en este dispositivo. En un dispositivo nuevo, escribe aquí tu ID.",
+      "ageLabel": "Edad",
+      "ageHelp": "En años",
+      "agePh": "p. ej. 24",
+      "errId": "Falta tu ID. Escribe el que usaste antes o recarga la página para obtener uno nuevo.",
+      "errAge": "Introduce tu edad como un número entre 16 y 99.",
+      "startTest": "¡Vamos!",
+      "s2Title": "Prueba de reacción",
+      "s2Intro": "<b>Rojo</b> significa esperar. En cuanto se ponga <b>verde</b>, toca (o pulsa la <b>barra espaciadora</b>) lo más rápido que puedas.",
+      "padBegin": "Toca para empezar",
+      "padWaitMsg": "Espera al verde…",
+      "tooEarly": "¡Demasiado pronto!",
+      "tooEarlyMsg": "Espera al verde. Esta ronda se repite.",
+      "guessMsg": "Eso fue adivinar, no reaccionar. Esta ronda se repite.",
+      "missed": "Fallada",
+      "round": "Ronda",
+      "resultsTitle": "Tus resultados",
+      "chartTitle": "Cada reacción",
+      "lgReaction": "Reacción",
+      "lgMedian": "Mediana",
+      "lgLapse": "Zona de lapsus (> 500 ms)",
+      "newPb": "¡Nuevo récord personal!",
+      "pbWas": "Récord personal: {m} ms",
+      "stMedian": "Mediana",
+      "stMean": "Media",
+      "stFastest": "Más rápida",
+      "stSlowest": "Más lenta",
+      "stSd": "Desv. estándar",
+      "stSpeed": "Velocidad",
+      "stLapses": "Lapsus",
+      "stFalse": "Salidas en falso",
+      "stSlow10": "10 % más lentas",
+      "redo": "Jugar otra vez",
+      "cont": "Continuar",
+      "s3Title": "Datos de sueño",
+      "s3Note": "Introduce lo que muestra tu reloj o tu app de sueño.",
+      "scoreLabel": "Puntuación de sueño",
+      "scoreHelp": "Desliza hasta la puntuación que muestra tu app (0–100).",
+      "bedLabel": "Me dormí",
+      "wakeLabel": "Me desperté",
+      "totalLabel": "Sueño total",
+      "awakeLabel": "Tiempo despierto",
+      "hh": "h",
+      "mm": "min",
+      "save": "Guardar la ronda de hoy",
+      "saving": "Guardando…",
+      "savedTitle": "Guardado. ¡Hasta mañana!",
+      "savedText": "La ronda de hoy está guardada: {n} reacciones, mediana {m} ms.",
+      "notSavedTitle": "No se guardó en línea",
+      "notSavedText": "La página no pudo conectar con la base de datos del estudio. Descarga tu registro o cópialo y envíalo al equipo para que no se pierda este día.",
+      "download": "Descargar mi registro",
+      "copy": "Copiar como texto",
+      "downloaded": "Descargado.",
+      "dlFail": "La descarga se canceló o no está disponible. Copia el registro en su lugar.",
+      "copied": "Copiado. Pégalo en un mensaje al equipo del estudio.",
+      "copyFail": "Aquí no se permite copiar. Descarga el registro en su lugar.",
+      "newEntry": "Nuevo registro",
+      "stagesTitle": "Fases del sueño",
+      "deepLabel": "Sueño profundo",
+      "remLabel": "Sueño REM",
+      "lightLabel": "Sueño ligero",
+      "practice": "Práctica",
+      "practiceMsg": "Ronda de práctica, aún no cuenta",
+      "nowCounts": "Práctica terminada. ¡Ahora cuenta!",
+      "stop": "Parar",
+      "disturbedLabel": "Algo me distrajo durante la prueba",
+      "disturbedHelp": "Marca esta casilla si algo te distrajo durante la prueba, por ejemplo una notificación, alguien que te habló, un ruido o un toque sin querer. Tus tiempos se guardan igualmente, solo quedan marcados. Una marca sincera ayuda más al estudio que un buen resultado.",
+      "histTitle": "Tus últimas mañanas (mediana)",
+      "pbFirst": "Primer récord: {m} ms",
+      "warnTitle": "Revisa estos valores",
+      "warnTotalBed": "Tu sueño total ({a}) es más largo que el tiempo entre dormirte y despertarte ({b}).",
+      "warnStages": "Sueño profundo, REM y ligero suman {a}, más que tu sueño total ({b}).",
+      "warnWindow": "De dormirte a despertarte hay {b}. Revisa las horas (formato de 24 h).",
+      "warnWakeLate": "Tu hora de despertar es {a} antes de la prueba. ¿Pusiste la hora de despertar de hoy?",
+      "fixBtn": "Lo corrijo",
+      "saveAnyway": "Los valores son correctos, guardar",
+      "hoursAria": "Horas",
+      "minutesAria": "Minutos",
+      "errMissing": "Falta por rellenar: {list}."
+    },
+    "ca": {
+      "_name": "Català",
+      "brandSub": "Estudi de son i cognició",
+      "step1": "Registre",
+      "step2": "Prova de reacció",
+      "step3": "Dades de son",
+      "step4": "Fet",
+      "s1Title": "Bon dia! A punt per a la ronda d'avui?",
+      "s1Intro": "Comença la ronda poc després de despertar-te, abans del cafè i sempre amb el mateix dispositiu. És anònim: jugues amb un ID aleatori.",
+      "idLabel": "El teu ID de jugador",
+      "idHelp": "Es desa en aquest dispositiu. En un dispositiu nou, escriu-hi el teu ID.",
+      "ageLabel": "Edat",
+      "ageHelp": "En anys",
+      "agePh": "p. ex. 24",
+      "errId": "Falta el teu ID. Escriu el que feies servir abans o torna a carregar la pàgina per obtenir-ne un de nou.",
+      "errAge": "Introdueix la teva edat com un nombre entre 16 i 99.",
+      "startTest": "Som-hi!",
+      "s2Title": "Prova de reacció",
+      "s2Intro": "<b>Vermell</b> vol dir esperar. Quan es posi <b>verd</b>, toca (o prem la <b>barra d'espai</b>) tan ràpid com puguis.",
+      "padBegin": "Toca per començar",
+      "padWaitMsg": "Espera el verd…",
+      "tooEarly": "Massa aviat!",
+      "tooEarlyMsg": "Espera el verd. Aquesta ronda es repeteix.",
+      "guessMsg": "Això ha estat endevinar, no reaccionar. Aquesta ronda es repeteix.",
+      "missed": "Fallada",
+      "round": "Ronda",
+      "resultsTitle": "Els teus resultats",
+      "chartTitle": "Cada reacció",
+      "lgReaction": "Reacció",
+      "lgMedian": "Mediana",
+      "lgLapse": "Zona de lapsus (> 500 ms)",
+      "newPb": "Nou rècord personal!",
+      "pbWas": "Rècord personal: {m} ms",
+      "stMedian": "Mediana",
+      "stMean": "Mitjana",
+      "stFastest": "Més ràpida",
+      "stSlowest": "Més lenta",
+      "stSd": "Desv. estàndard",
+      "stSpeed": "Velocitat",
+      "stLapses": "Lapsus",
+      "stFalse": "Sortides en fals",
+      "stSlow10": "10 % més lentes",
+      "redo": "Tornar a jugar",
+      "cont": "Continuar",
+      "s3Title": "Dades de son",
+      "s3Note": "Introdueix el que mostra el teu rellotge o la teva app de son.",
+      "scoreLabel": "Puntuació de son",
+      "scoreHelp": "Llisca fins a la puntuació que mostra la teva app (0–100).",
+      "bedLabel": "M'he adormit",
+      "wakeLabel": "M'he despertat",
+      "totalLabel": "Son total",
+      "awakeLabel": "Temps despert",
+      "hh": "h",
+      "mm": "min",
+      "save": "Desar la ronda d'avui",
+      "saving": "S'està desant…",
+      "savedTitle": "Desat. Fins demà!",
+      "savedText": "La ronda d'avui s'ha desat: {n} reaccions, mediana {m} ms.",
+      "notSavedTitle": "No s'ha desat en línia",
+      "notSavedText": "La pàgina no s'ha pogut connectar amb la base de dades de l'estudi. Descarrega el teu registre o copia'l i envia'l a l'equip perquè no es perdi aquest dia.",
+      "download": "Descarregar el meu registre",
+      "copy": "Copiar com a text",
+      "downloaded": "Descarregat.",
+      "dlFail": "La descàrrega s'ha cancel·lat o no està disponible. Copia el registre.",
+      "copied": "Copiat. Enganxa'l en un missatge a l'equip de l'estudi.",
+      "copyFail": "Aquí no es pot copiar. Descarrega el registre.",
+      "newEntry": "Nou registre",
+      "stagesTitle": "Fases del son",
+      "deepLabel": "Son profund",
+      "remLabel": "Son REM",
+      "lightLabel": "Son lleuger",
+      "practice": "Pràctica",
+      "practiceMsg": "Ronda de pràctica, encara no compta",
+      "nowCounts": "Pràctica acabada. Ara compta!",
+      "stop": "Aturar",
+      "disturbedLabel": "Alguna cosa m'ha distret durant la prova",
+      "disturbedHelp": "Marca aquesta casella si alguna cosa t'ha distret durant la prova, per exemple una notificació, algú que et parlava, un soroll o un toc sense voler. Els teus temps es desen igualment, només queden marcats. Una marca sincera ajuda més l'estudi que un bon resultat.",
+      "histTitle": "Els teus darrers matins (mediana)",
+      "pbFirst": "Primer rècord: {m} ms",
+      "warnTitle": "Revisa aquests valors",
+      "warnTotalBed": "El teu son total ({a}) és més llarg que el temps entre adormir-te i despertar-te ({b}).",
+      "warnStages": "Son profund, REM i lleuger sumen {a}, més que el teu son total ({b}).",
+      "warnWindow": "D'adormir-te a despertar-te hi ha {b}. Revisa les hores (format de 24 h).",
+      "warnWakeLate": "La teva hora de despertar és {a} abans de la prova. Has posat l'hora de despertar d'avui?",
+      "fixBtn": "Ho corregeixo",
+      "saveAnyway": "Els valors són correctes, desar",
+      "hoursAria": "Hores",
+      "minutesAria": "Minuts",
+      "errMissing": "Falta omplir: {list}."
+    }
   };
-  const STAGES = {
-    en: { stagesTitle: "Sleep stages", stagesHelp: "If your app shows them", deepLabel: "Deep sleep", remLabel: "REM sleep", lightLabel: "Light sleep" },
-    de: { stagesTitle: "Schlafphasen", stagesHelp: "Falls deine App sie anzeigt", deepLabel: "Tiefschlaf", remLabel: "REM-Schlaf", lightLabel: "Leichtschlaf" },
-    nl: { stagesTitle: "Slaapfasen", stagesHelp: "Als je app ze toont", deepLabel: "Diepe slaap", remLabel: "REM-slaap", lightLabel: "Lichte slaap" },
-    fr: { stagesTitle: "Phases de sommeil", stagesHelp: "Si ton appli les affiche", deepLabel: "Sommeil profond", remLabel: "Sommeil paradoxal (REM)", lightLabel: "Sommeil léger" },
-    es: { stagesTitle: "Fases del sueño", stagesHelp: "Si tu app las muestra", deepLabel: "Sueño profundo", remLabel: "Sueño REM", lightLabel: "Sueño ligero" },
-    ca: { stagesTitle: "Fases del son", stagesHelp: "Si la teva app les mostra", deepLabel: "Son profund", remLabel: "Son REM", lightLabel: "Son lleuger" }
-  };
-  for (const k in STAGES) Object.assign(I18N[k], STAGES[k]);
-  const EXTRA = {
-    en: { practice: "Practice", practiceMsg: "Practice round, it doesn't count yet", nowCounts: "Practice done. Now it counts!", stop: "Stop",
-      disturbedLabel: "Something disturbed the test",
-      disturbedHelp: "Tick this if you were distracted during the test, for example by a notification, someone talking to you, a noise, or an accidental tap. Your times are still saved, just marked. An honest tick helps the study more than a good-looking result.",
-      histTitle: "Your recent mornings (median)", pbFirst: "First record set: {m} ms",
-      warnTitle: "Please check these values", warnTotalBed: "Your total sleep ({a}) is longer than the time between going to bed and waking up ({b}).",
-      warnStages: "Deep, REM and light sleep add up to {a}, more than your total sleep ({b}).", warnWindow: "Bedtime to wake-up is {b}. Please check the hours (24-hour clock).",
-      warnWakeLate: "Your wake-up time is {a} before the test. Did you set today's wake-up time?", fixBtn: "Let me fix it", saveAnyway: "Values are correct, save" },
-    de: { practice: "Übung", practiceMsg: "Übungsrunde, zählt noch nicht", nowCounts: "Übung vorbei. Jetzt zählt's!", stop: "Abbrechen",
-      disturbedLabel: "Beim Test war ich abgelenkt",
-      disturbedHelp: "Setz das Häkchen, wenn dich während des Tests etwas abgelenkt hat, z. B. eine Benachrichtigung, jemand hat dich angesprochen, ein Geräusch oder du hast aus Versehen getippt. Deine Zeiten werden trotzdem gespeichert, nur markiert. Ein ehrliches Häkchen hilft der Studie mehr als ein schönes Ergebnis.",
-      histTitle: "Deine letzten Morgen (Median)", pbFirst: "Erste Bestzeit gesetzt: {m} ms",
-      warnTitle: "Bitte prüf diese Werte", warnTotalBed: "Deine Schlafdauer ({a}) ist länger als die Zeit zwischen Zubettgehen und Aufwachen ({b}).",
-      warnStages: "Tief-, REM- und Leichtschlaf ergeben zusammen {a}, mehr als deine Schlafdauer ({b}).", warnWindow: "Vom Zubettgehen bis zum Aufwachen sind es {b}. Bitte prüf die Uhrzeiten (24-Stunden-Format).",
-      warnWakeLate: "Deine Aufwachzeit liegt {a} vor dem Test. Hast du die heutige Aufwachzeit eingestellt?", fixBtn: "Ich korrigiere es", saveAnyway: "Werte stimmen, speichern" },
-    nl: { practice: "Oefening", practiceMsg: "Oefenronde, telt nog niet mee", nowCounts: "Oefenen gedaan. Nu telt het!", stop: "Stoppen",
-      disturbedLabel: "Ik werd gestoord tijdens de test",
-      disturbedHelp: "Vink dit aan als iets je afleidde tijdens de test, bijvoorbeeld een melding, iemand die tegen je praatte, een geluid of een tik per ongeluk. Je tijden worden toch bewaard, alleen gemarkeerd. Een eerlijk vinkje helpt de studie meer dan een mooi resultaat.",
-      histTitle: "Jouw laatste ochtenden (mediaan)", pbFirst: "Eerste record gezet: {m} ms",
-      warnTitle: "Controleer deze waarden", warnTotalBed: "Je totale slaap ({a}) is langer dan de tijd tussen naar bed gaan en wakker worden ({b}).",
-      warnStages: "Diepe, REM- en lichte slaap samen zijn {a}, meer dan je totale slaap ({b}).", warnWindow: "Van naar bed gaan tot wakker worden is {b}. Controleer de uren (24-uursnotatie).",
-      warnWakeLate: "Je wektijd ligt {a} vóór de test. Heb je de wektijd van vandaag ingesteld?", fixBtn: "Ik pas het aan", saveAnyway: "Waarden kloppen, bewaren" },
-    fr: { practice: "Essai", practiceMsg: "Manche d'essai, elle ne compte pas encore", nowCounts: "Essai terminé. Maintenant, ça compte !", stop: "Arrêter",
-      disturbedLabel: "J'ai été dérangé pendant le test",
-      disturbedHelp: "Coche cette case si quelque chose t'a distrait pendant le test, par exemple une notification, quelqu'un qui t'a parlé, un bruit ou une touche accidentelle. Tes temps sont quand même enregistrés, simplement marqués. Une coche honnête aide plus l'étude qu'un beau résultat.",
-      histTitle: "Tes derniers matins (médiane)", pbFirst: "Premier record établi : {m} ms",
-      warnTitle: "Vérifie ces valeurs", warnTotalBed: "Ton sommeil total ({a}) est plus long que le temps entre le coucher et le réveil ({b}).",
-      warnStages: "Sommeil profond, paradoxal et léger font ensemble {a}, plus que ton sommeil total ({b}).", warnWindow: "Du coucher au réveil, il y a {b}. Vérifie les heures (format 24 h).",
-      warnWakeLate: "Ton heure de réveil est {a} avant le test. As-tu réglé l'heure de réveil d'aujourd'hui ?", fixBtn: "Je corrige", saveAnyway: "Les valeurs sont justes, enregistrer" },
-    es: { practice: "Práctica", practiceMsg: "Ronda de práctica, aún no cuenta", nowCounts: "Práctica terminada. ¡Ahora cuenta!", stop: "Parar",
-      disturbedLabel: "Algo me distrajo durante la prueba",
-      disturbedHelp: "Marca esta casilla si algo te distrajo durante la prueba, por ejemplo una notificación, alguien que te habló, un ruido o un toque sin querer. Tus tiempos se guardan igualmente, solo quedan marcados. Una marca sincera ayuda más al estudio que un buen resultado.",
-      histTitle: "Tus últimas mañanas (mediana)", pbFirst: "Primer récord: {m} ms",
-      warnTitle: "Revisa estos valores", warnTotalBed: "Tu sueño total ({a}) es más largo que el tiempo entre acostarte y despertarte ({b}).",
-      warnStages: "Sueño profundo, REM y ligero suman {a}, más que tu sueño total ({b}).", warnWindow: "De acostarte a despertarte hay {b}. Revisa las horas (formato de 24 h).",
-      warnWakeLate: "Tu hora de despertar es {a} antes de la prueba. ¿Pusiste la hora de despertar de hoy?", fixBtn: "Lo corrijo", saveAnyway: "Los valores son correctos, guardar" },
-    ca: { practice: "Pràctica", practiceMsg: "Ronda de pràctica, encara no compta", nowCounts: "Pràctica acabada. Ara compta!", stop: "Aturar",
-      disturbedLabel: "Alguna cosa m'ha distret durant la prova",
-      disturbedHelp: "Marca aquesta casella si alguna cosa t'ha distret durant la prova, per exemple una notificació, algú que et parlava, un soroll o un toc sense voler. Els teus temps es desen igualment, només queden marcats. Una marca sincera ajuda més l'estudi que un bon resultat.",
-      histTitle: "Els teus darrers matins (mediana)", pbFirst: "Primer rècord: {m} ms",
-      warnTitle: "Revisa aquests valors", warnTotalBed: "El teu son total ({a}) és més llarg que el temps entre anar a dormir i despertar-te ({b}).",
-      warnStages: "Son profund, REM i lleuger sumen {a}, més que el teu son total ({b}).", warnWindow: "D'anar a dormir a despertar-te hi ha {b}. Revisa les hores (format de 24 h).",
-      warnWakeLate: "La teva hora de despertar és {a} abans de la prova. Has posat l'hora de despertar d'avui?", fixBtn: "Ho corregeixo", saveAnyway: "Els valors són correctes, desar" }
-  };
-  for (const k in EXTRA) Object.assign(I18N[k], EXTRA[k]);
   const LANG_ORDER = ["en", "de", "nl", "fr", "es", "ca"];
   const HTML_LANG = { en: "en", de: "de", nl: "nl-BE", fr: "fr", es: "es", ca: "ca" };
 
   const $ = (id) => document.getElementById(id);
   const LS_KEY = "wakeup-test-profile", LS_LANG = "wakeup-test-lang", LS_HIST = "wakeup-test-history";
-  const LAPSE_MS = 500, ANTICIPATION_MS = 100, TIMEOUT_MS = 3000, MIN_WAIT = 2000, MAX_WAIT = 6000, PRACTICE = 1;
+  const LAPSE_MS = 500, ANTICIPATION_MS = 100, TIMEOUT_MS = 3000, MIN_WAIT = 2000, MAX_WAIT = 6000, PRACTICE = 1, TRIALS = 5;
   const reduceMotion = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   { const hr = new Date().getHours(); if (hr >= 4 && hr < 12) document.documentElement.classList.add("morning"); }
   function loadHist() { try { const h = JSON.parse(localStorage.getItem(LS_HIST) || "null"); if (h && Array.isArray(h.entries)) return h; } catch (e) {} return { bestSingle: null, entries: [] }; }
@@ -597,10 +898,10 @@ td a { color: var(--accent); }
   };
 
   // ===== CONFIG: paste your Google Apps Script web-app URL here (it ends in /exec) =====
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXTFn8eKhNMGMmi1JQ7_RjF_s5WbvVTXU9Y4TcOQl84RPh44BvxfhfL1uVo1WPYJt9/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/library/d/1-B1TqZsckOaphU6FH-DM6foE8d9vABjD057Q5XbnERbTMgm1kk5o32rf/2";
   const TOKEN = "wakeup-2026"; // must be the same as TOKEN in Code.gs
   // ===================================================================================
-  let lastEntry = null, shots = [], T = null, step = 1;
+  let lastEntry = null, T = null, step = 1;
 
   function localDate(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 
@@ -618,12 +919,13 @@ td a { color: var(--accent); }
     document.querySelectorAll("[data-t-html]").forEach(el => { el.innerHTML = t(el.dataset.tHtml); });
     langBox.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.code === lang)));
     $("p-age").placeholder = t("agePh");
-    document.querySelectorAll(".tp .unit-h").forEach(el => el.textContent = t("hh"));
-    document.querySelectorAll(".tp .unit-m").forEach(el => el.textContent = t("mm"));
+    document.querySelectorAll(".wheel .unit-h").forEach(el => el.textContent = t("hh"));
+    document.querySelectorAll(".wheel .unit-m").forEach(el => el.textContent = t("mm"));
+    document.querySelectorAll('.wcol[data-part="h"]').forEach(el => el.setAttribute("aria-label", t("hoursAria")));
+    document.querySelectorAll('.wcol[data-part="m"]').forEach(el => el.setAttribute("aria-label", t("minutesAria")));
     if (T && T.phase === "idle") $("pad-msg").textContent = t("padBegin");
     if (T && T.phase === "done") renderResult();
     updateProgress();
-    renderThumbs();
   }
   function setLang(code) { lang = code; try { localStorage.setItem(LS_LANG, code); } catch (e) {} applyLang(); }
 
@@ -639,7 +941,6 @@ td a { color: var(--accent); }
   if (storedProfile && storedProfile.anonId) {
     $("p-id").value = storedProfile.anonId;
     $("p-age").value = storedProfile.age || "";
-    if (storedProfile.trials) $("p-trials").value = String(storedProfile.trials);
   } else {
     $("p-id").value = newId();
   }
@@ -654,6 +955,7 @@ td a { color: var(--accent); }
     for (let i = 1; i <= 4; i++) $("s" + i).hidden = i !== n;
     updateProgress();
     window.scrollTo(0, 0);
+    if (n === 3) requestAnimationFrame(() => Object.values(pickers).forEach(pk => syncPicker(pk, null, true)));
   }
 
   $("to-test").addEventListener("click", () => {
@@ -664,7 +966,7 @@ td a { color: var(--accent); }
     if (!(age >= 16 && age <= 99)) { err.textContent = t("errAge"); err.hidden = false; return; }
     err.hidden = true;
     $("p-id").value = anonId;
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ anonId, age, trials: +$("p-trials").value })); } catch (e) {}
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ anonId, age })); } catch (e) {}
     resetTest();
     setStep(2);
   });
@@ -674,7 +976,7 @@ td a { color: var(--accent); }
   function clearTimers() { if (!T) return; clearTimeout(T.waitTimer); clearTimeout(T.timeout); clearTimeout(T.nextTimer); (T.cdTimers || []).forEach(clearTimeout); }
   function resetTest() {
     clearTimers();
-    T = { n: +$("p-trials").value, phase: "idle", trials: [], practice: [], falseStarts: 0, practiceFalseStarts: 0, waitTimer: null, timeout: null, nextTimer: null, cdTimers: [], t0: 0, startedAt: null };
+    T = { n: TRIALS, phase: "idle", trials: [], practice: [], falseStarts: 0, practiceFalseStarts: 0, waitTimer: null, timeout: null, nextTimer: null, cdTimers: [], t0: 0, startedAt: null };
     pad.className = "pad idle";
     $("pad-big").textContent = "READY?";
     $("pad-msg").textContent = t("padBegin");
@@ -873,36 +1175,94 @@ td a { color: var(--accent); }
   });
 
   // ---------- alarm-style time pickers ----------
+  const ITEM = 44;
   const pickers = {};
   function buildPicker(key, maxHour, isDuration) {
     const box = $("tp-" + key);
-    const h = document.createElement("select"), m = document.createElement("select");
-    h.id = "tp-" + key + "-h"; m.id = "tp-" + key + "-m";
-    h.add(new Option("––", "")); m.add(new Option("––", ""));
-    for (let i = 0; i <= maxHour; i++) h.add(new Option(isDuration ? String(i) : String(i).padStart(2, "0"), String(i)));
-    for (let i = 0; i < 60; i++) m.add(new Option(String(i).padStart(2, "0"), String(i)));
-    h.addEventListener("change", () => { if (h.value !== "" && m.value === "") m.value = "0"; if (h.value === "") m.value = ""; });
-    m.addEventListener("change", () => { if (m.value !== "" && h.value === "") h.value = "0"; });
+    box.className = "wheel"; box.innerHTML = "";
+    const band = document.createElement("div"); band.className = "band"; box.appendChild(band);
+    const pk = { key, box, h: null, m: null, cols: {}, lock: false, lockT: null };
+    const mkCol = (part, max, pad) => {
+      const col = document.createElement("div");
+      col.className = "wcol"; col.dataset.part = part; col.tabIndex = 0;
+      col.setAttribute("role", "spinbutton");
+      col.setAttribute("aria-valuemin", "0"); col.setAttribute("aria-valuemax", String(max));
+      const sp = () => { const d = document.createElement("div"); d.className = "sp"; d.setAttribute("aria-hidden", "true"); return d; };
+      col.appendChild(sp());
+      for (let v = -1; v <= max; v++) {
+        const it = document.createElement("div");
+        it.className = "it" + (v < 0 ? " unset" : "");
+        it.textContent = v < 0 ? "––" : (pad ? String(v).padStart(2, "0") : String(v));
+        it.setAttribute("aria-hidden", "true");
+        it.addEventListener("click", () => setPart(pk, part, v < 0 ? null : v, true));
+        col.appendChild(it);
+      }
+      col.appendChild(sp());
+      let tmr = null;
+      col.addEventListener("scroll", () => {
+        if (pk.lock) return;
+        clearTimeout(tmr);
+        tmr = setTimeout(() => {
+          const idx = Math.max(0, Math.min(max + 1, Math.round(col.scrollTop / ITEM)));
+          const v = idx === 0 ? null : idx - 1;
+          if (v !== pk[part]) setPart(pk, part, v, false);
+        }, 120);
+      }, { passive: true });
+      col.addEventListener("keydown", (e) => {
+        const cur = pk[part]; let next;
+        if (e.key === "ArrowUp") next = cur == null || cur === 0 ? null : cur - 1;
+        else if (e.key === "ArrowDown") next = cur == null ? 0 : Math.min(max, cur + 1);
+        else if (e.key === "Delete" || e.key === "Backspace") next = null;
+        else return;
+        e.preventDefault(); setPart(pk, part, next, true);
+      });
+      pk.cols[part] = col;
+      return col;
+    };
+    const unit = (cls) => { const u = document.createElement("span"); u.className = "unit " + cls; return u; };
     if (isDuration) {
-      const uh = document.createElement("span"); uh.className = "unit unit-h";
-      const um = document.createElement("span"); um.className = "unit unit-m";
-      box.append(h, uh, m, um);
+      box.append(mkCol("h", maxHour, false), unit("unit-h"), mkCol("m", 59, true), unit("unit-m"));
     } else {
-      const colon = document.createElement("span"); colon.className = "colon"; colon.textContent = ":"; colon.setAttribute("aria-hidden", "true");
-      box.append(h, colon, m);
+      const sep = document.createElement("span"); sep.className = "wsep"; sep.textContent = ":"; sep.setAttribute("aria-hidden", "true");
+      box.append(mkCol("h", maxHour, true), sep, mkCol("m", 59, true));
     }
-    pickers[key] = { h, m };
+    pickers[key] = pk;
+    syncPicker(pk, null, true);
   }
+  function setPart(pk, part, v, scrollSelf) {
+    pk[part] = v;
+    const other = part === "h" ? "m" : "h";
+    if (v == null) pk[other] = null;
+    else if (pk[other] == null) pk[other] = 0;
+    syncPicker(pk, scrollSelf ? null : part, false);
+    pk.box.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  function syncPicker(pk, skipPart, instant) {
+    for (const part of ["h", "m"]) {
+      const col = pk.cols[part], v = pk[part];
+      col.setAttribute("aria-valuetext", v == null ? "–" : String(v));
+      if (v == null) col.removeAttribute("aria-valuenow"); else col.setAttribute("aria-valuenow", String(v));
+      if (part === skipPart) continue;
+      const target = (v == null ? 0 : v + 1) * ITEM;
+      if (Math.abs(col.scrollTop - target) > 1) {
+        pk.lock = true;
+        col.scrollTo({ top: target, behavior: instant || reduceMotion ? "auto" : "smooth" });
+        clearTimeout(pk.lockT);
+        pk.lockT = setTimeout(() => { pk.lock = false; }, instant ? 60 : 450);
+      }
+    }
+  }
+  function tpGet(key) { const pk = pickers[key]; return pk.h == null || pk.m == null ? null : { h: pk.h, m: pk.m }; }
+  function tpSet(key, h, m) { const pk = pickers[key]; pk.h = h; pk.m = m; syncPicker(pk, null, true); }
+  function tpClear(key) { const pk = pickers[key]; pk.h = null; pk.m = null; syncPicker(pk, null, true); }
   buildPicker("bed", 23, false);
   buildPicker("wake", 23, false);
   buildPicker("total", 14, true);
   buildPicker("deep", 8, true);
   buildPicker("rem", 8, true);
   buildPicker("light", 12, true);
+  buildPicker("awake", 6, true);
   const durMin = (key) => { const v = tpGet(key); return v ? v.h * 60 + v.m : null; };
-  function tpGet(key) { const p = pickers[key]; if (p.h.value === "" || p.m.value === "") return null; return { h: +p.h.value, m: +p.m.value }; }
-  function tpSet(key, h, m) { pickers[key].h.value = String(h); pickers[key].m.value = String(m); }
-  function tpClear(key) { pickers[key].h.value = ""; pickers[key].m.value = ""; }
   const hhmm = (v) => v ? String(v.h).padStart(2, "0") + ":" + String(v.m).padStart(2, "0") : null;
 
   // ---------- step 3 ----------
@@ -910,51 +1270,11 @@ td a { color: var(--accent); }
   function updateScore() {
     $("score-out").textContent = scoreSet ? $("sl-score").value : "–";
     $("score-wrap").classList.toggle("unset", !scoreSet);
-    $("score-clear").hidden = !scoreSet;
   }
   $("sl-score").addEventListener("input", () => { scoreSet = true; updateScore(); });
-  $("score-clear").addEventListener("click", () => { scoreSet = false; $("sl-score").value = "50"; updateScore(); });
   const num = (id) => { const v = $(id).value.trim(); if (v === "") return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
 
-  $("shot-input").addEventListener("change", (e) => {
-    const files = Array.from(e.target.files || []);
-    const err = $("s3-err");
-    for (const f of files) {
-      if (shots.length >= 4) break;
-      if (!/^image\/(png|jpeg|webp)$/.test(f.type)) { err.textContent = t("errType", { name: f.name }); err.hidden = false; continue; }
-      if (f.size > 20 * 1024 * 1024) { err.textContent = t("errSize", { name: f.name }); err.hidden = false; continue; }
-      shots.push({ file: f, url: URL.createObjectURL(f) });
-    }
-    e.target.value = "";
-    renderThumbs();
-  });
-  function renderThumbs() {
-    const box = $("thumbs"); box.innerHTML = "";
-    shots.forEach((s, i) => {
-      const fig = document.createElement("figure");
-      const img = document.createElement("img"); img.src = s.url; img.alt = "Screenshot " + (i + 1);
-      const b = document.createElement("button"); b.type = "button"; b.textContent = "×"; b.setAttribute("aria-label", t("removeShot") + " " + (i + 1));
-      b.addEventListener("click", () => { URL.revokeObjectURL(s.url); shots.splice(i, 1); renderThumbs(); });
-      fig.append(img, b); box.appendChild(fig);
-    });
-  }
 
-  function shrinkImage(file) {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        const max = 1600, k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-        const c = document.createElement("canvas");
-        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        resolve({ type: "image/jpeg", data: c.toDataURL("image/jpeg", 0.85).split(",")[1] });
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image")); };
-      img.src = url;
-    });
-  }
   function minutesSince(v, date) {
     if (!v) return null;
     const w = new Date(date); w.setHours(v.h, v.m, 0, 0);
@@ -979,14 +1299,30 @@ td a { color: var(--accent); }
   }
   let warnAck = false;
   function hideWarn() { $("warnbox").hidden = true; }
-  $("s3").addEventListener("change", () => { warnAck = false; hideWarn(); });
+  $("s3").addEventListener("change", (e) => {
+    warnAck = false; hideWarn();
+    const f = e.target.closest && e.target.closest(".field"); if (f) f.classList.remove("missing");
+  });
+  $("sl-score").addEventListener("input", () => $("sl-score").closest(".field").classList.remove("missing"));
   $("warn-fix").addEventListener("click", hideWarn);
   $("warn-save").addEventListener("click", () => { warnAck = true; hideWarn(); $("submit").click(); });
 
   $("submit").addEventListener("click", async () => {
     const err = $("s3-err"); err.hidden = true;
+    const required = [
+      ["score", "scoreLabel", () => scoreSet, $("sl-score").closest(".field")],
+      ...["total", "bed", "wake", "deep", "light", "rem", "awake"].map(k => [k, k + "Label", () => tpGet(k) != null, $("tp-" + k).closest(".field")])
+    ];
+    const missing = required.filter(r => !r[2]());
+    required.forEach(r => r[3].classList.toggle("missing", !r[2]()));
+    if (missing.length) {
+      hideWarn();
+      err.textContent = t("errMissing", { list: missing.map(r => t(r[1])).join(", ") });
+      err.hidden = false;
+      missing[0][3].scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+      return;
+    }
     const wake = tpGet("wake");
-    if (!wake) { err.textContent = t("errWake"); err.hidden = false; return; }
     if (!warnAck) {
       const warns = plausibility(wake);
       if (warns.length) {
@@ -1032,22 +1368,16 @@ td a { color: var(--accent); }
         deepMin: durMin("deep"),
         remMin: durMin("rem"),
         lightMin: durMin("light"),
-        timesAwake: num("sl-awake")
+        awakeMin: durMin("awake")
       },
-      screenshots: [],
       client: { userAgent: navigator.userAgent.slice(0, 300), screen: `${screen.width}x${screen.height}`, tzOffsetMin: -new Date().getTimezoneOffset() }
     };
 
-    let uploadNote = "";
-    let images = [];
-    for (const sh of shots) {
-      try { images.push(await shrinkImage(sh.file)); } catch (e) { uploadNote = t("uploadFail"); }
-    }
-    entry.screenshots = images.length;
+
     lastEntry = entry;
     let saved = false;
     if (/^https:\/\/script\.google\.com\//.test(SCRIPT_URL)) {
-      const body = JSON.stringify({ token: TOKEN, entry, screenshots: images });
+      const body = JSON.stringify({ token: TOKEN, entry });
       for (let attempt = 0; attempt < 2 && !saved; attempt++) {
         try {
           const res = await fetch(SCRIPT_URL, { method: "POST", body });
@@ -1058,7 +1388,6 @@ td a { color: var(--accent); }
         }
       }
     }
-    if (!saved) lastEntry = { ...entry, screenshots: images.length };
     btn.disabled = false; btn.textContent = t("save");
     warnAck = false;
     const h = loadHist();
@@ -1075,15 +1404,14 @@ td a { color: var(--accent); }
     } else $("hist-wrap").hidden = true;
     if (saved) {
       $("done-title").textContent = t("savedTitle");
-      $("done-text").textContent = t("savedText", { n: entry.test.validResponses, m: entry.test.medianMs ?? "–" }) + uploadNote;
+      $("done-text").textContent = t("savedText", { n: entry.test.validResponses, m: entry.test.medianMs ?? "–" });
       $("fallback").hidden = true;
     } else {
       $("done-title").textContent = t("notSavedTitle");
-      $("done-text").textContent = t("notSavedText") + uploadNote;
+      $("done-text").textContent = t("notSavedText");
       $("fallback").hidden = false;
     }
     $("fallback-status").textContent = "";
-    shots.forEach(s => URL.revokeObjectURL(s.url)); shots = []; renderThumbs();
     setStep(4);
   });
 
@@ -1102,10 +1430,11 @@ td a { color: var(--accent); }
     catch (e) { st.textContent = t("copyFail"); st.className = "statusline bad"; }
   });
   $("again").addEventListener("click", () => {
-    $("sl-awake").value = "";
-    ["bed", "wake", "total", "deep", "rem", "light"].forEach(tpClear);
+    ["bed", "wake", "total", "deep", "rem", "light", "awake"].forEach(tpClear);
     warnAck = false; hideWarn();
     scoreSet = false; $("sl-score").value = "50"; updateScore();
+    document.querySelectorAll("#s3 .field.missing").forEach(f => f.classList.remove("missing"));
+    $("s3-err").hidden = true;
     setStep(1);
   });
 
