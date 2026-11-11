@@ -403,7 +403,7 @@ td a { color: var(--accent); }
       "stagesTitle": "Sleep stages",
       "deepLabel": "Deep sleep",
       "remLabel": "REM sleep",
-      "lightLabel": "Light sleep",
+      "lightLabel": "Light sleep (Apple: Core)",
       "practice": "Practice",
       "practiceMsg": "Practice round, it doesn't count yet",
       "nowCounts": "Practice done. Now it counts!",
@@ -493,7 +493,7 @@ td a { color: var(--accent); }
       "stagesTitle": "Schlafphasen",
       "deepLabel": "Tiefschlaf",
       "remLabel": "REM-Schlaf",
-      "lightLabel": "Leichtschlaf",
+      "lightLabel": "Leichtschlaf (Apple: Kern)",
       "practice": "Übung",
       "practiceMsg": "Übungsrunde, zählt noch nicht",
       "nowCounts": "Übung vorbei. Jetzt zählt's!",
@@ -583,7 +583,7 @@ td a { color: var(--accent); }
       "stagesTitle": "Slaapfasen",
       "deepLabel": "Diepe slaap",
       "remLabel": "REM-slaap",
-      "lightLabel": "Lichte slaap",
+      "lightLabel": "Lichte slaap (Apple: Kern)",
       "practice": "Oefening",
       "practiceMsg": "Oefenronde, telt nog niet mee",
       "nowCounts": "Oefenen gedaan. Nu telt het!",
@@ -673,7 +673,7 @@ td a { color: var(--accent); }
       "stagesTitle": "Phases de sommeil",
       "deepLabel": "Sommeil profond",
       "remLabel": "Sommeil paradoxal (REM)",
-      "lightLabel": "Sommeil léger",
+      "lightLabel": "Sommeil léger (Apple : Principal)",
       "practice": "Essai",
       "practiceMsg": "Manche d'essai, elle ne compte pas encore",
       "nowCounts": "Essai terminé. Maintenant, ça compte !",
@@ -763,7 +763,7 @@ td a { color: var(--accent); }
       "stagesTitle": "Fases del sueño",
       "deepLabel": "Sueño profundo",
       "remLabel": "Sueño REM",
-      "lightLabel": "Sueño ligero",
+      "lightLabel": "Sueño ligero (Apple: Esencial)",
       "practice": "Práctica",
       "practiceMsg": "Ronda de práctica, aún no cuenta",
       "nowCounts": "Práctica terminada. ¡Ahora cuenta!",
@@ -853,7 +853,7 @@ td a { color: var(--accent); }
       "stagesTitle": "Fases del son",
       "deepLabel": "Son profund",
       "remLabel": "Son REM",
-      "lightLabel": "Son lleuger",
+      "lightLabel": "Son lleuger (Apple: Essencial)",
       "practice": "Pràctica",
       "practiceMsg": "Ronda de pràctica, encara no compta",
       "nowCounts": "Pràctica acabada. Ara compta!",
@@ -1375,19 +1375,27 @@ td a { color: var(--accent); }
 
 
     lastEntry = entry;
-    let saved = false;
-    if (/^https:\/\/script\.google\.com\//.test(SCRIPT_URL)) {
+    let saved = false, saveErr = "";
+    const url = SCRIPT_URL.trim();
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) {
+      saveErr = url.includes("PASTE_YOUR") ? "SCRIPT_URL not filled in" : "SCRIPT_URL must start with https://script.google.com/ and end with /exec";
+    } else {
       const body = JSON.stringify({ token: TOKEN, entry });
       for (let attempt = 0; attempt < 2 && !saved; attempt++) {
         try {
-          const res = await fetch(SCRIPT_URL, { method: "POST", body });
-          const j = await res.json();
-          saved = !!(j && j.ok);
+          const res = await fetch(url, { method: "POST", body });
+          const text = await res.text();
+          let j = null; try { j = JSON.parse(text); } catch (e) {}
+          if (j && j.ok) saved = true;
+          else if (j) saveErr = "script answered: " + (j.error || "not ok");
+          else saveErr = "HTTP " + res.status + ", no JSON (" + text.slice(0, 60).replace(/\s+/g, " ") + ")";
         } catch (e) {
+          saveErr = "no connection or access blocked (" + (e && e.message ? e.message : e) + ")";
           await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
         }
       }
     }
+    if (!saved) console.error("Wake-up save failed:", saveErr);
     btn.disabled = false; btn.textContent = t("save");
     warnAck = false;
     const h = loadHist();
@@ -1408,7 +1416,7 @@ td a { color: var(--accent); }
       $("fallback").hidden = true;
     } else {
       $("done-title").textContent = t("notSavedTitle");
-      $("done-text").textContent = t("notSavedText");
+      $("done-text").textContent = t("notSavedText") + (saveErr ? " [" + saveErr + "]" : "");
       $("fallback").hidden = false;
     }
     $("fallback-status").textContent = "";
